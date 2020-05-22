@@ -1,0 +1,16 @@
+
+*.py~
+
+*.pyc
+
+*.ps
+
+fib.py
+
+maze_1.py
+
+maze_2.py
+
+string_permutations.py
+
+zone_maze.py
