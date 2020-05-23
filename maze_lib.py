@@ -314,6 +314,16 @@ class Maze(object):
          self.kruskal_weave(self.height*self.width//50)
       elif style == SPLIT_TREE:
           self.split_tree(5, 5, self.height//5, self.width//5, R_WALK, R_WALK)
+      self.validate_maze()
+
+   def validate_maze(self):
+       self.color_all(0)
+       cycles = self.color_from(1, Coord(0,0))
+       if cycles != 0:
+           print("ERROR: Maze has %d cycles!" % cycles)
+       other_end = Coord(self.height-1, self.width-1)
+       if self.get(other_end).get_color() != 1:
+           print("ERROR: Maze ends are not connected!")
 
    def zigzag_connect_all(self):
       for x in range(self.height):
@@ -509,7 +519,10 @@ class Maze(object):
    def color_all(self, color):
       for x in range(self.height):
          for y in range(self.width):
-            self.grid[x][y].set_color(color)
+            cell = self.grid[x][y]
+            cell.set_color(color)
+            if cell.has_under_cell():
+                cell.get_under_cell().set_color(color)
 
    def get_all_color(self, color):
       answer = []
@@ -1240,6 +1253,18 @@ class TestMaze(unittest.TestCase):
        # and east and west
        self.assertEqual(kset(EAST), kset(WEST))
        self.assertNotEqual(kset(NORTH), kset(WEST))
+   def test_kruskal_weave_color(self):
+       # has_under_cell
+       test_maze = Maze(3, 3, 'U')
+       test_maze.set_up_unlinked_kruskal()
+       test_maze.color_all(13)
+       center = Coord(1,1)
+       test_maze.kruskal_weave_over_under_cross(center)
+       test_maze.color_all(11)
+       over_cell = test_maze.get(center)
+       self.assertTrue(over_cell.has_under_cell())
+       under_cell = over_cell.get_under_cell()
+       self.assertEqual(11, under_cell.get_color())
    def test_all_nextdoor_pairs(self):
        test_maze = Maze(3, 3, 'T')
        n = test_maze.all_nextdoor_pairs()
