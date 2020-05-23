@@ -14,17 +14,8 @@ class MazeApp(object):
    #Y = 96
    NUDGE = 15
    def __init__(self, master, seed = None):
-      self.s = self.WIDTH/(self.X+2) # cell size
-      self.s = 10
-      #if seed:
-      #   print('random number seed set to %s' % (seed))
-      #   self.seed = seed
-      #   random.seed(seed)
-      #else:
-      #   seed = random.randint(0, (2**32)-1)
-      #   print('random generator being seeded with %s' % (seed))
-      #   self.seed = seed
-      #   random.seed(seed)
+      self.cell_size = self.WIDTH/(self.X+2) # cell size
+      self.cell_size = 10
       self.next_seed = seed
 
       self.frame = Tkinter.Frame(master)
@@ -143,8 +134,10 @@ class MazeApp(object):
       self.maze.connect_all(self.get_outer_style())
       for i in range(self.get_outer_count()):
          self.maze.move_door()
-      self.maze.get(maze_lib.Coord(0,0)).add_door(maze_lib.WEST, 'door')
-      self.maze.get(maze_lib.Coord(self.X-1,self.Y-1)).add_door(maze_lib.EAST, 'door')
+      #self.maze.get(maze_lib.Coord(0,0)).add_door(maze_lib.WEST, maze_lib.Door(None, maze_lib.WEST, None))
+      #self.maze.get(maze_lib.Coord(self.X-1,self.Y-1)).add_door(maze_lib.EAST, maze_lib.Door(None, maze_lib.EAST, None))
+      if self.outer_style.get() != "split_tree":
+          self.maze.open_outer_walls()
 
    def prepare_zone_maze(self, x, y):
       self.effective_x = x * (self.X//x)
@@ -162,8 +155,9 @@ class MazeApp(object):
       else:
           self.maze = maze_lib.Maze(self.X, self.Y, 'Spiral')
           self.maze.split_tree(x, y, self.X//x, self.Y//y, self.get_inner_style(), maze_lib.R_WALK)
-          self.maze.get(maze_lib.Coord(0,0)).add_door(maze_lib.WEST, 'door')
-          self.maze.get(maze_lib.Coord(self.X-1,self.Y-1)).add_door(maze_lib.EAST, 'door')
+          #self.maze.get(maze_lib.Coord(0,0)).add_door(maze_lib.WEST, 'door')
+          #self.maze.get(maze_lib.Coord(self.X-1,self.Y-1)).add_door(maze_lib.EAST, 'door')
+          self.maze.open_outer_walls()
 
    def prepare_maze(self):
       #description = '%s %s %d' % (self.zone_opt.get(), self.outer_style.get(), self.get_outer_count())
@@ -180,7 +174,7 @@ class MazeApp(object):
       self.set_seed()
       self.clear_canvas()
       self.prepare_maze()
-      self.draw_maze(self.s, self.NUDGE)
+      self.draw_maze(self.cell_size, self.NUDGE)
 
    def set_seed(self):
       seed = self.next_seed
@@ -199,14 +193,15 @@ class MazeApp(object):
    def redraw_maze(self):
       self.clear_canvas()
       try:
-          self.draw_maze(self.s, self.NUDGE)
+          self.draw_maze(self.cell_size, self.NUDGE)
       except:
           pass
 
    def add_to_maze(self):
        self.clear_canvas()
        self.maze.split_tree_again()
-       self.draw_maze(self.s, self.NUDGE)
+       self.draw_maze(self.cell_size, self.NUDGE)
+       self.maze.open_outer_walls()
 
    def draw_test(self):
        self.clear_canvas()
@@ -244,8 +239,8 @@ class MazeApp(object):
        return CellPainter(cell_size, self.area, x, y, cell)
 
 class CellPainter(object):
-    def __init__(self, s, area, x, y, cell):
-        self.s = s
+    def __init__(self, cell_size, area, x, y, cell):
+        self.cell_size = cell_size
         self.area = area
         self.cell = cell
         self.x = x
@@ -256,8 +251,9 @@ class CellPainter(object):
             self.corners.append( (x1, y1) )
             (x1, y1) = self.step(direction, x1, y1)
     def draw_cell(self):
-        if self.cell.get_door_count() == 0: return
-        if self.cell.has_under_cell():
+        if self.cell.get_door_count() == 0:
+            self.draw_empty()
+        elif self.cell.has_under_cell():
             self.draw_over_under()
         else:
             self.draw_normal()
@@ -273,9 +269,12 @@ class CellPainter(object):
     def draw_over_under(self):
         self.line(self.corners[0], self.corners[2])
         self.line(self.corners[1], self.corners[3])
+    def draw_empty(self):
+        #self.area.create_rectangle(self.corners[0][0]+2, self.corners[0][1]+2, self.corners[2][0]-2, self.corners[2][1]-2, fill='gray75', width=1)
+        return
     def step(self, direction, x, y):
-        new_x = x + (0, self.s, 0, -self.s)[direction]
-        new_y = y + (self.s, 0, -self.s, 0)[direction]
+        new_x = x + (0, self.cell_size, 0, -self.cell_size)[direction]
+        new_y = y + (self.cell_size, 0, -self.cell_size, 0)[direction]
         return (new_x, new_y)
     def x_delta(self, direction):
         return (0, 1, 0, -1)[direction]
@@ -301,8 +300,8 @@ class CellPainter(object):
 class CellPainterOctagon(CellPainter):
     def draw_normal(self):
         has_wall = [(not self.cell.has_door(direction)) for direction in range(4)]
-        s1 = int(self.s//3)
-        s3 = self.s - s1
+        s1 = int(self.cell_size//3)
+        s3 = self.cell_size - s1
         (x1, y1) = (self.x, self.y)
         points_of_interest = []
         corner = True
@@ -323,8 +322,8 @@ class CellPainterOctagon(CellPainter):
                     self.area.create_line(p1[0], p1[1], p2[0], p2[1])
             corner = not corner
     def draw_over_under(self):
-        s1 = int(self.s//3)
-        s3 = self.s - s1
+        s1 = int(self.cell_size//3)
+        s3 = self.cell_size - s1
         (x1, y1) = (self.x, self.y)
         points_of_interest = []
         for direction in range(4):
@@ -341,8 +340,8 @@ class CellPainterOctagon(CellPainter):
 class CellPainterInset(CellPainter):
     def draw_cell(self):
         if self.cell.get_door_count() == 0: return
-        s1 = int(self.s//6)
-        s3 = self.s - s1
+        s1 = int(self.cell_size//6)
+        s3 = self.cell_size - s1
         (x1, y1) = (self.x, self.y)
 
         for direction in range(4):
@@ -388,12 +387,12 @@ class CellPainterWire(CellPainter):
                 #self.line(mid, center)
             #xy1 = xy2
         if self.cell.get_door_count() > 2:
-            s1 = int(self.s//8)
+            s1 = int(self.cell_size//8)
             self.area.create_oval(center[0]-s1, center[1]-s1, center[0]+s1, center[1]+s1, fill='black')
     def draw_over_under(self):
         self.compute_mids()
-        s1 = int(self.s//3)
-        s3 = self.s - s1
+        s1 = int(self.cell_size//3)
+        s3 = self.cell_size - s1
         c1 = (self.x + s1, self.y + s1)
         c2 = (self.x + s3, self.y + s3)
         self.line(self.mids[0], self.mids[2])
@@ -425,8 +424,8 @@ class CellPainterWire2(CellPainterWire):
         d_plus_1 = (direction+1)%4
         d_minus_1 = (direction+3)%4
         start = self.corners[d_plus_1]
-        step_1 = self.pixel_step(direction, start, self.s//2)
-        step_2 = self.pixel_step(d_minus_1, step_1, self.s//2)
+        step_1 = self.pixel_step(direction, start, self.cell_size//2)
+        step_2 = self.pixel_step(d_minus_1, step_1, self.cell_size//2)
         return step_2
 
 class MazeApp1(MazeApp):

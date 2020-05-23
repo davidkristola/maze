@@ -117,6 +117,8 @@ class Door(object):
       return '<%s-%s-%s>' % (self.start, ('N', 'E', 'S', 'W')[self.direction], self.end)
    def __repr__(self):
       return str(self)
+   def is_real_door(self):
+      return True
 
 class TestDoor(unittest.TestCase):
    def test_opposite_direction(self):
@@ -137,6 +139,21 @@ class TestDoor(unittest.TestCase):
       b = Cell(Coord(2, 3))
       door = Door(a, SOUTH, b)
       self.assertEqual(str(door), '<Cell(1,3)-S-Cell(2,3)>')
+
+class DoorToTheOutside(object):
+   def __init__(self, start, direction):
+      self.start = start
+      self.direction = direction
+   def get_other_side(self, this_side):
+      return None
+   def get_direction(self):
+      return self.direction
+   def __str__(self):
+      return 'Escape<%s-%s-None>' % (self.start, ('N', 'E', 'S', 'W')[self.direction])
+   def __repr__(self):
+      return str(self)
+   def is_real_door(self):
+      return False
 
 
 class Cell(object):
@@ -164,7 +181,7 @@ class Cell(object):
     def has_door(self, direction):
         return self.doors[direction] is not None
     def get_doors(self):
-        return [d for d in self.doors if d is not None]
+        return [d for d in self.doors if d is not None and d.is_real_door()]
     def get_door_count(self):
         c = 0;
         for d in self.doors:
@@ -172,11 +189,13 @@ class Cell(object):
                 c += 1
         return c
     def add_door(self, direction, door):
+        if door is not None:
+            _ = door.get_direction() # will throw an exception of door isn't a Door
         self.doors[direction] = door
     def get_coord(self):
         return self.coord
     def get_neighbors(self):
-        doors = self.get_doors()
+        doors = [d for d in self.get_doors() if d.is_real_door()]
         return [d.get_other_side(self) for d in doors]
     def set_prev(self, prev):
         self.prev = prev
@@ -283,6 +302,8 @@ class Maze(object):
       self.zone = zone
       self.grid = [[Cell(Coord(x, y), zone) for y in range(width)] for x in range(height)] # grid of cells
       self.debug = False
+      self.out_west = None
+      self.out_east = None
 
    def get(self, coord):
       return self.grid[coord.x][coord.y]
@@ -317,6 +338,7 @@ class Maze(object):
       self.validate_maze()
 
    def validate_maze(self):
+       print("Validating maze...")
        self.color_all(0)
        cycles = self.color_from(1, Coord(0,0))
        if cycles != 0:
@@ -523,6 +545,10 @@ class Maze(object):
             cell.set_color(color)
             if cell.has_under_cell():
                 cell.get_under_cell().set_color(color)
+      if self.out_west is not None:
+         self.out_west.set_color(color)
+      if self.out_east is not None:
+         self.out_east.set_color(color)
 
    def get_all_color(self, color):
       answer = []
@@ -531,6 +557,14 @@ class Maze(object):
             if self.grid[x][y].is_color(color):
                answer += [self.grid[x][y]]
       return answer
+
+   def open_outer_walls(self):
+      west_coord = Coord(0, 0)
+      east_coort = Coord(self.height-1,self.width-1)
+      self.out_west = Cell(west_coord.step(WEST))
+      self.out_east = Cell(east_coort.step(EAST))
+      self.get(west_coord).add_door(WEST, DoorToTheOutside(self.get(west_coord), WEST))
+      self.get(east_coort).add_door(EAST, DoorToTheOutside(self.get(east_coort), EAST))
 
    def color_from(self, color, coord):
       '''BFS'''
@@ -541,9 +575,10 @@ class Maze(object):
       while len(explore) != 0:
          x = explore[0]
          del(explore[0])
-         x.set_color(color)
-         cycles += max(0, len([y for y in x.get_neighbors() if y.is_color(color)]) - 1)
-         explore += [y for y in x.get_neighbors() if not y.is_color(color)]
+         if x is not None:
+             x.set_color(color)
+             cycles += max(0, len([y for y in x.get_neighbors() if y.is_color(color)]) - 1)
+             explore += [y for y in x.get_neighbors() if not y.is_color(color)]
       return cycles
 
    def path_from_to(self, from_coord, to_coord, color):
@@ -786,6 +821,8 @@ class Maze(object):
        #for i in range(10):
        while (self.path_queue.count() > 0):
            self.split_tree_more()
+       self.validate_maze()
+
    def split_tree_more(self):
        p = self.path_queue.pop()
        #print('length of the longest queued path is %d' % len(p))
@@ -901,7 +938,6 @@ class Maze(object):
       else:
          print('WARNING: no candidate walls between %s and %s' % (c1, c2))
       self.color_all(0)
-
 
 
 
@@ -1391,8 +1427,8 @@ class Zone(object):
       y = (delta, self.maze_y-1, delta, 0)[direction]
       return Coord(x,y)
    def open_outer_walls(self):
-      self.get(Coord(0, 0)).add_door(WEST, 'door')
-      self.get(Coord(self.X-1,self.Y-1)).add_door(EAST, 'door')
+      self.get(Coord(0, 0)).add_door(WEST, Door(self.get(Coord(0, 0)), WEST, None))
+      self.get(Coord(self.X-1,self.Y-1)).add_door(EAST, Door(None, EAST, self.get(Coord(self.X-1,self.Y-1))))
    def get(self, coord):
       # compute zone x and y from coord, and then create an adjusted coord
       # if hollow, return a room with doors on all sides
