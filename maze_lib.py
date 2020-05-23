@@ -716,8 +716,6 @@ class Maze(object):
    def get_kruskal_set(self, cell_id):
        return self.set_for_cell[cell_id]
 
-       # python maze_3.py 1729483954 (with weave 16 selected) produces an obviously wrong maze. Lower left corner has a cycle with a cross-over.
-
    def kruskal_weave_over_under_cross(self, coord):
        if not self.can_kruskal_weave_over_under_cross(coord):
            return False
