@@ -56,6 +56,10 @@ class Coord(object):
             elif dx == 1:
                 return SOUTH
         raise Exception('Coordinates are not adjacent!')
+    def shift(self, x_offset, y_offset):
+        new_x = self.x + x_offset
+        new_y = self.y + y_offset
+        return Coord(new_x, new_y)
 
 
 class TestCoord(unittest.TestCase):
@@ -88,7 +92,14 @@ class TestCoord(unittest.TestCase):
          for d in range(4):
              b = a.step(d)
              self.assertEqual(a.direction_to_other(b), d)
-
+    def test_shift(self):
+        start = Coord(7, 7)
+        a1 = start.shift(-1, 0)
+        e1 = Coord(6, 7)
+        self.assertEqual(a1, e1)
+        a2 = start.shift(0, 1)
+        e2 = Coord(7, 8)
+        self.assertEqual(a2, e2)
 
 
 class Door(object):
@@ -276,7 +287,7 @@ class Maze(object):
    def get(self, coord):
       return self.grid[coord.x][coord.y]
 
-   def get_dir(self, coord, direction):
+   def get_cell_in_direction_from_coord(self, coord, direction):
        actual = coord.step(direction)
        assert self.is_valid_coord(actual)
        return self.grid[actual.x][actual.y]
@@ -653,15 +664,11 @@ class Maze(object):
        self.set_up_unlinked_kruskal()
        self.kruskal_join_all()
 
-#        heapq.heappush(self.heap, (cost, path))
-#        (cost, path) = heapq.heappop(self.heap)
-
    def kruskal_weave(self, weave_count):
        self.set_up_unlinked_kruskal()
        for _ in range(weave_count):
            self.kruskal_weave_over_under_cross(self.pick_random_coord())
        self.kruskal_join_all()
-
 
    def kruskal_join_all(self):
        self.color_all(1)
@@ -684,14 +691,35 @@ class Maze(object):
        set_number_to_expand = self.set_for_cell[c1_id]
        set_number_to_disband = self.set_for_cell[c2_id]
        #print('joining set expand:%s and set disband:%s' % (self.cells_in_set[set_number_to_expand], self.cells_in_set[set_number_to_disband]))
-       cells_to_move = [c for c in self.cells_in_set[set_number_to_disband]]
-       for c in cells_to_move:
-           #print('moving %s from set %d to %d' % (c, set_number_to_disband, set_number_to_expand))
+       cells_to_move = [cell_id for cell_id in self.cells_in_set[set_number_to_disband]]
+       for cell_id in cells_to_move:
+           #print('moving id %d from set %d to %d' % (cell_id, set_number_to_disband, set_number_to_expand))
            update_set = self.cells_in_set[set_number_to_expand]
-           update_set.add(c)
+           update_set.add(cell_id)
            self.cells_in_set[set_number_to_expand] = update_set
-           self.set_for_cell[c] = set_number_to_expand
+           self.set_for_cell[cell_id] = set_number_to_expand
        self.cells_in_set[set_number_to_disband] = set()
+
+   def get_kruskal_set(self, cell_id):
+       return self.set_for_cell[cell_id]
+
+       # python maze_3.py 1729483954 (with weave 16 selected) produces an obviously wrong maze. Lower left corner has a cycle with a cross-over.
+
+   def kruskal_weave_over_under_cross(self, coord):
+       if not self.can_kruskal_weave_over_under_cross(coord):
+           return False
+       if random.randint(0, 1) == 0:
+           #self.add_door(coord, EAST)
+           self.kruskal_join(self.get(coord), EAST, self.get_cell_in_direction_from_coord(coord, EAST))
+           #self.add_door(coord, WEST)
+           self.kruskal_join(self.get(coord), WEST, self.get_cell_in_direction_from_coord(coord, WEST))
+       else:
+           #self.add_door(coord, NORTH)
+           self.kruskal_join(self.get(coord), NORTH, self.get_cell_in_direction_from_coord(coord, NORTH))
+           #self.add_door(coord, SOUTH)
+           self.kruskal_join(self.get(coord), SOUTH, self.get_cell_in_direction_from_coord(coord, SOUTH))
+       self.tunnel_under_existing_path(coord)
+       return True
 
    def tunnel_under_existing_path(self, coord):
        # coord has either a vertical or horizontal path over it
@@ -704,33 +732,20 @@ class Maze(object):
            d = (NORTH, SOUTH)
        self.add_under_door(under_cell, d[0])
        self.add_under_door(under_cell, d[1])
-       self.kruskal_join_sets(self.get_dir(coord, d[0]).get_id(), self.get_dir(coord, d[1]).get_id())
+       self.kruskal_join_sets(self.get_cell_in_direction_from_coord(coord, d[0]).get_id(), self.get_cell_in_direction_from_coord(coord, d[1]).get_id())
 
    def can_kruskal_weave_over_under_cross(self, coord):
-       for d in range(4):
-           next = coord.step(d)
-           if self.invalid_coordinate(next):
-               #if self.debug: print('skipping cross at %s' % (coord))
-               return False# can't weave this
-           if self.get(next).has_under_cell():
-               #if self.debug: print('skipping cross at %s' % (coord))
-               return False # can't weave this
+       ''' make sure all of the surrounding cells are valid and not weaved. '''
+       for x_offset in [-1, 0, +1]:
+           for y_offset in [-1, 0, +1]:
+               try_here = coord.shift(x_offset, y_offset)
+               if self.invalid_coordinate(try_here):
+                   return False
+               cell_here = self.get(try_here)
+               if cell_here.has_under_cell():
+                   return False
        return True
-   def kruskal_weave_over_under_cross(self, coord):
-       if not self.can_kruskal_weave_over_under_cross(coord):
-           return
-       if random.randint(0, 1) == 0:
-           #self.add_door(coord, EAST)
-           self.kruskal_join(self.get(coord), EAST, self.get_dir(coord, EAST))
-           #self.add_door(coord, WEST)
-           self.kruskal_join(self.get(coord), WEST, self.get_dir(coord, WEST))
-       else:
-           #self.add_door(coord, NORTH)
-           self.kruskal_join(self.get(coord), NORTH, self.get_dir(coord, NORTH))
-           #self.add_door(coord, SOUTH)
-           self.kruskal_join(self.get(coord), SOUTH, self.get_dir(coord, SOUTH))
-       self.tunnel_under_existing_path(coord)
-
+       
    def exp_2(self):
        path_maker = PathMaker(self.height, self.width, 8)
        #path_maker.make_unordered_point_list()
@@ -1204,18 +1219,27 @@ class TestMaze(unittest.TestCase):
        test_maze.add_door(Coord(1,1), EAST)
        test_maze.add_door(Coord(1,1), WEST)
        test_maze.tunnel_under_existing_path(Coord(1,1))
+       #print("test_tunnel_under_existing_path")
        #self.debug_print_maze(test_maze)
        test_maze.color_from(5, Coord(1,1).step(NORTH))
        self.assertEqual(test_maze.get(Coord(1,1).step(SOUTH)).get_color(), 5)
    def test_kruskal_weave_over_under_cross(self):
        test_maze = Maze(3, 3, 'U')
        test_maze.set_up_unlinked_kruskal()
-       test_maze.kruskal_weave_over_under_cross(Coord(1,1))
+       center = Coord(1,1)
+       test_maze.kruskal_weave_over_under_cross(center)
        #self.debug_print_maze(test_maze)
-       test_maze.color_from(5, Coord(1,1).step(NORTH))
-       test_maze.color_from(7, Coord(1,1).step(EAST))
-       self.assertEqual(test_maze.get(Coord(1,1).step(SOUTH)).get_color(), 5)
-       self.assertEqual(test_maze.get(Coord(1,1).step(WEST)).get_color(), 7)
+       test_maze.color_from(5, center.step(NORTH))
+       test_maze.color_from(7, center.step(EAST))
+       self.assertEqual(test_maze.get(center.step(SOUTH)).get_color(), 5)
+       self.assertEqual(test_maze.get(center.step(WEST)).get_color(), 7)
+       def kset(direction):
+           return test_maze.get_kruskal_set(test_maze.get(center.step(direction)).get_id())
+       # now make sure the kruskal set numbers for the north and south neighbors are the same
+       self.assertEqual(kset(NORTH), kset(SOUTH))
+       # and east and west
+       self.assertEqual(kset(EAST), kset(WEST))
+       self.assertNotEqual(kset(NORTH), kset(WEST))
    def test_all_nextdoor_pairs(self):
        test_maze = Maze(3, 3, 'T')
        n = test_maze.all_nextdoor_pairs()
