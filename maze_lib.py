@@ -959,6 +959,50 @@ class Maze(object):
       self.color_all(0)
 
 
+class ZigZagMaze(Maze):
+   def __init__(self, height, width, zone):
+      Maze.__init__(self, height, width, zone)
+      self.style = ZIGZAG
+
+class ZagZigMaze(Maze):
+   def __init__(self, height, width, zone):
+      Maze.__init__(self, height, width, zone)
+      self.style = ZAGZIG
+
+class SpiralMaze(Maze):
+   def __init__(self, height, width, zone):
+      Maze.__init__(self, height, width, zone)
+      self.style = SPIRAL
+
+class DoubleSpiralMaze(Maze):
+   def __init__(self, height, width, zone):
+      Maze.__init__(self, height, width, zone)
+      self.style = BI_SPI
+
+class RandomWalkMaze(Maze):
+   def __init__(self, height, width, zone):
+      Maze.__init__(self, height, width, zone)
+      self.style = R_WALK
+
+class RandomRunMaze(Maze):
+   def __init__(self, height, width, zone):
+      Maze.__init__(self, height, width, zone)
+      self.style = RANRUN
+
+class KruskalMaze(Maze):
+   def __init__(self, height, width, zone):
+      Maze.__init__(self, height, width, zone)
+      self.style = KRUSKAL
+
+class WeavedKruskalMaze(Maze):
+   def __init__(self, height, width, zone):
+      Maze.__init__(self, height, width, zone)
+      self.style = EXP_2
+
+class SplitTreeMaze(Maze):
+   def __init__(self, height, width, zone):
+      Maze.__init__(self, height, width, zone)
+      self.style = SPLIT_TREE
 
 
 class TestMaze(unittest.TestCase):
