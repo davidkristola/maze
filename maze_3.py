@@ -128,14 +128,10 @@ class MazeApp(object):
    def prepare_mono_maze(self):
       self.effective_x = self.X
       self.effective_y = self.Y
-      print('effective (x, y) = (%d, %d)' % (self.effective_x, self.effective_y))
-      print('EAST door (x, y) = (%d, %d)' % (self.X-1,self.Y-1))
       self.maze = maze_lib.Maze(self.X, self.Y, 'Spiral')
       self.maze.connect_all(self.get_outer_style())
       for i in range(self.get_outer_count()):
          self.maze.move_door()
-      #self.maze.get(maze_lib.Coord(0,0)).add_door(maze_lib.WEST, maze_lib.Door(None, maze_lib.WEST, None))
-      #self.maze.get(maze_lib.Coord(self.X-1,self.Y-1)).add_door(maze_lib.EAST, maze_lib.Door(None, maze_lib.EAST, None))
       if self.outer_style.get() != "split_tree":
           self.maze.open_outer_walls()
 
@@ -144,7 +140,7 @@ class MazeApp(object):
       self.effective_y = y * (self.Y//y)
       #print('self.X//x = %d, self.Y//y = %d' % (self.X//x, self.Y//y))
       print('outer style = %s' % (self.outer_style.get()))
-      print('(x, y) = (%d, %d)' % (x, y))
+      print('Zone maze zones (x, y) = (%d, %d)' % (x, y))
       print('effective (x, y) = (%d, %d)' % (self.effective_x, self.effective_y))
       print('self.X//x = %d, self.Y//y = %d' % (self.X//x, self.Y//y))
       print('EAST door (x, y) = (%d, %d)' % (self.X-1,self.Y-1))
@@ -155,8 +151,6 @@ class MazeApp(object):
       else:
           self.maze = maze_lib.Maze(self.X, self.Y, 'Spiral')
           self.maze.split_tree(x, y, self.X//x, self.Y//y, self.get_inner_style(), maze_lib.R_WALK)
-          #self.maze.get(maze_lib.Coord(0,0)).add_door(maze_lib.WEST, 'door')
-          #self.maze.get(maze_lib.Coord(self.X-1,self.Y-1)).add_door(maze_lib.EAST, 'door')
           self.maze.open_outer_walls()
 
    def prepare_maze(self):
@@ -428,29 +422,10 @@ class CellPainterWire2(CellPainterWire):
         step_2 = self.pixel_step(d_minus_1, step_1, self.cell_size//2)
         return step_2
 
-class MazeApp1(MazeApp):
-   X = 30
-   Y = 40
-   NUDGE = 1
-
-class MazeApp2(MazeApp):
-   X = 15
-   Y = 20
-   NUDGE = 1
-
-
 def run_program(seed):
    root = Tkinter.Tk()
-   which = None
-   if which is None:
-       print("running MazeApp (75x100): full resolution)")
-       app = MazeApp(root, seed)
-   elif which == 1:
-       print("running MazeApp1 (30x40): reduced resolution)")
-       app = MazeApp1(root)
-   else:
-       print("running MazeApp2 (15x20)")
-       app = MazeApp2(root)
+   app = MazeApp(root, seed)
+   print("running MazeApp (%dx%d)" % (app.X, app.Y))
    app.touch = 1
    root.mainloop()
    root.destroy()
