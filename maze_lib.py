@@ -155,6 +155,12 @@ class DoorToTheOutside(object):
    def is_real_door(self):
       return False
 
+global_next_id = 1
+def get_next_id():
+   global global_next_id
+   answer = global_next_id
+   global_next_id += 1
+   return answer
 
 class Cell(object):
     def __init__(self, coord, zone=''):
@@ -164,7 +170,8 @@ class Cell(object):
         self.color = 0
         self.prev = coord
         self.distance = 0
-        self.id = (coord.x * 10000000) + coord.y
+        self.id = get_next_id()
+        #self.id = (coord.x * 10000000) + coord.y
         self.under_cell = None
     def get_id(self):
         return self.id
@@ -244,6 +251,17 @@ class TestCell(unittest.TestCase):
       self.assertEqual(neighbors, [b])
       neighbors = b.get_neighbors()
       self.assertEqual(neighbors, [self.a])
+   def test_get_id(self):
+      b = Cell(Coord(8, 13))
+      self.assertNotEqual(self.a.get_id(), b.get_id())
+   def test_get_id_grid(self):
+      height = 3
+      width = 3
+      grid = [[Cell(Coord(x, y), "Z") for y in range(width)] for x in range(height)]
+      first = grid[0][0]
+      last = grid[2][2]
+      self.assertNotEqual(first.get_id(), last.get_id())
+      self.assertEqual(first.get_id(), grid[0][0].get_id())
 
 class UnderCell(Cell):
    def __init__(self, over_cell):
