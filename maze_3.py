@@ -14,7 +14,7 @@ class MazeApp(object):
    #Y = 96
    NUDGE = 15
    def __init__(self, master, seed = None):
-      self.cell_size = self.WIDTH/(self.X+2) # cell size
+      #self.cell_size = self.WIDTH/(self.X+2) # cell size
       self.cell_size = 10
       self.next_seed = seed
 
@@ -200,8 +200,8 @@ class MazeApp(object):
    def add_to_maze(self):
        self.clear_canvas()
        self.maze.split_tree_again()
-       self.draw_maze(self.cell_size, self.NUDGE)
        self.maze.open_outer_walls()
+       self.draw_maze(self.cell_size, self.NUDGE)
 
    def draw_test(self):
        self.clear_canvas()
