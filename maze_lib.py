@@ -338,14 +338,15 @@ class Maze(object):
       self.validate_maze()
 
    def validate_maze(self):
-       print("Validating maze...")
-       self.color_all(0)
-       cycles = self.color_from(1, Coord(0,0))
-       if cycles != 0:
-           print("ERROR: Maze has %d cycles!" % cycles)
-       other_end = Coord(self.height-1, self.width-1)
-       if self.get(other_end).get_color() != 1:
-           print("ERROR: Maze ends are not connected!")
+       return
+       #print("Validating maze...")
+       #self.color_all(0)
+       #cycles = self.color_from(1, Coord(0,0))
+       #if cycles != 0:
+       #    print("ERROR: Maze has %d cycles!" % cycles)
+       #other_end = Coord(self.height-1, self.width-1)
+       #if self.get(other_end).get_color() != 1:
+       #    print("ERROR: Maze ends are not connected!")
 
    def zigzag_connect_all(self):
       for x in range(self.height):
