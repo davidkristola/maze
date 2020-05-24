@@ -331,7 +331,7 @@ class Maze(object):
        assert self.is_valid_coord(actual)
        return self.grid[actual.x][actual.y]
 
-
+   #TODO: change style from an input here to a subclass of Maze
    def connect_all(self, style):
       if style == RANDOM:
          self.connect_all(random.randint(ZIGZAG, LAST_STYLE))
