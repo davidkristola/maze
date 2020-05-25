@@ -30,6 +30,10 @@ class MazeApp(object):
       self.button_draw = Tkinter.Button(self.frame, text='Draw', command=self.draw_next_maze)
       self.button_draw.pack(side=Tkinter.LEFT)
 
+      self.button_more = Tkinter.Button(self.frame, text='Complete', command=self.complete_split_tree)
+      self.button_more.pack(side=Tkinter.LEFT)
+      self.button_more.config(state=Tkinter.DISABLED)
+
       self.cell_opt = Tkinter.StringVar(self.frame)
       self.cell_opt.set('Traditional')
       self.cell_check = Tkinter.OptionMenu(self.frame, self.cell_opt, 'Traditional', 'Octagon', 'Inset', 'Wire', 'Wire2')
@@ -71,9 +75,6 @@ class MazeApp(object):
       self.inner_count.set('0')
       self.inner_count_menu = Tkinter.OptionMenu(self.frame, self.inner_count, *shuffle_counts)
       self.inner_count_menu.pack(side=Tkinter.LEFT)
-
-      self.button_more = Tkinter.Button(self.frame, text='More', command=self.add_to_maze)
-      self.button_more.pack(side=Tkinter.LEFT)
 
       self.button_test = Tkinter.Button(self.frame, text='Test', command=self.draw_test)
       self.button_test.pack(side=Tkinter.LEFT)
@@ -132,7 +133,9 @@ class MazeApp(object):
       self.maze.connect_all(self.get_outer_style())
       for i in range(self.get_outer_count()):
          self.maze.move_door()
-      if self.outer_style.get() != "split_tree":
+      if self.outer_style.get() == "split_tree":
+          self.button_more.config(state=Tkinter.NORMAL)
+      else:
           self.maze.open_outer_walls()
 
    def prepare_zone_maze(self, x, y):
@@ -165,6 +168,7 @@ class MazeApp(object):
       self.area.postscript(file='maze.ps')
 
    def draw_next_maze(self):
+      self.button_more.config(state=Tkinter.DISABLED)
       self.set_seed()
       self.clear_canvas()
       self.prepare_maze()
@@ -191,7 +195,7 @@ class MazeApp(object):
       except:
           pass
 
-   def add_to_maze(self):
+   def complete_split_tree(self):
        self.clear_canvas()
        self.maze.split_tree_again()
        self.maze.open_outer_walls()
