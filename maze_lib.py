@@ -322,6 +322,21 @@ class Maze(object):
       self.debug = False
       self.out_west = None
       self.out_east = None
+      self.first_coord = Coord(0, 0)
+      self.last_coord = Coord(height-1, width-1)
+
+   def get_first_coord(self):
+      return self.first_coord
+   def get_last_coord(self):
+      return self.last_coord
+   def get_first_cell(self):
+      return self.grid[0][0]
+   def get_last_cell(self):
+      return self.get(self.last_coord)
+   def get_x_range(self):
+      return range(self.height)
+   def get_y_range(self):
+      return range(self.width)
 
    def get(self, coord):
       return self.grid[coord.x][coord.y]
@@ -558,8 +573,8 @@ class Maze(object):
       return it.get_neighbors()
 
    def color_all(self, color):
-      for x in range(self.height):
-         for y in range(self.width):
+      for x in self.get_x_range():
+         for y in self.get_y_range():
             cell = self.grid[x][y]
             cell.set_color(color)
             if cell.has_under_cell():
@@ -578,12 +593,12 @@ class Maze(object):
       return answer
 
    def open_outer_walls(self):
-      west_coord = Coord(0, 0)
-      east_coort = Coord(self.height-1,self.width-1)
+      west_coord = self.get_first_coord()
+      east_coort = self.get_last_coord()
       self.out_west = Cell(west_coord.step(WEST))
       self.out_east = Cell(east_coort.step(EAST))
-      self.get(west_coord).add_door(WEST, DoorToTheOutside(self.get(west_coord), WEST))
-      self.get(east_coort).add_door(EAST, DoorToTheOutside(self.get(east_coort), EAST))
+      self.get_first_cell().add_door(WEST, DoorToTheOutside(self.get(west_coord), WEST))
+      self.get_last_cell().add_door(EAST, DoorToTheOutside(self.get(east_coort), EAST))
 
    def color_from(self, color, coord):
       '''BFS'''
@@ -1004,10 +1019,66 @@ class SplitTreeMaze(Maze):
       Maze.__init__(self, height, width, zone)
       self.style = SPLIT_TREE
 
+def NewMaze(style, height, width, zone):
+    if style == RANDOM:
+        return NewMaze(random.randint(ZIGZAG, LAST_STYLE), height, width, zone)
+    elif style == ZIGZAG:
+        return ZigZagMaze(height, width, zone)
+    elif style == SPIRAL:
+        return SpiralMaze(height, width, zone)
+    elif style == BI_SPI:
+        return DoubleSpiralMaze(height, width, zone)
+    elif style == ZAGZIG:
+        return ZagZigMaze(height, width, zone)
+    elif style == R_WALK:
+        return RandomWalkMaze(height, width, zone)
+    elif style == RANRUN:
+        return RandomRunMaze(height, width, zone)
+    elif style == KRUSKAL:
+        return KruskalMaze(height, width, zone)
+    elif style == EXP_2:
+        return WeavedKruskalMaze(height, width, zone)
+    elif style == SPLIT_TREE:
+        return SplitTreeMaze(height, width, zone)
+    return None
+
+
+
 
 class TestMaze(unittest.TestCase):
    def setUp(self):
-      self.maze = Maze(5, 10, 'Q')
+      self.maze = NewMaze(ZIGZAG, 5, 10, 'Q')
+
+   def debug_print_maze(self, the_maze):
+      def d(c):
+         answer = ''
+         for direction in range(4):
+            answer += '_' if not c.has_door(direction) else ('N','E','S','W')[direction]
+         return answer
+      doors = [[d(c) for c in row] for row in the_maze.grid]
+      print('doors:')
+      for line in doors:
+         print(line)
+   def debug_print_maze_colors(self, the_maze):
+      grid = [['%03d'%c.get_color() for c in row] for row in the_maze.grid]
+      print('colors:')
+      for line in grid:
+         print(line)
+   def debug_print_under_maze(self, the_maze):
+       def d(c):
+          u = c.get_under_cell()
+          if u is None:
+              return '    '
+          answer = ''
+          for direction in range(4):
+              answer += '_' if not u.has_door(direction) else ('N','E','S','W')[direction]
+          return answer
+       doors = [[d(c) for c in row] for row in the_maze.grid]
+       print('doors:')
+       for line in doors:
+           print(line)
+
+   # (implicit) ZigZag maze tests
    def test_index(self):
       self.assertEqual(len(self.maze.grid), 5)
       self.assertEqual(len(self.maze.grid[0]), 10)
@@ -1044,6 +1115,11 @@ class TestMaze(unittest.TestCase):
          direction = self.maze.pick_random_bicolor_wall(start)
          self.assertTrue(direction in range(4))
          self.maze.add_door(xy, direction)
+   def test_open_outer_walls(self):
+       self.maze.open_outer_walls()
+       self.assertTrue(self.maze.get_first_cell().has_door(WEST))
+       self.assertTrue(self.maze.get_last_cell().has_door(EAST))
+
    def check_all_connected(self, coord_of_one, neighbors_1, neighbors_2):
       zero = self.maze.get(Coord(0, 0))
       doors = zero.get_doors()
@@ -1062,37 +1138,23 @@ class TestMaze(unittest.TestCase):
           self.assertTrue(self.maze.get(neighbors_1[0]) in self.maze.get_neighbors(neighbors_1[1]))
       if neighbors_2 is not None:
           self.assertTrue(self.maze.get(neighbors_2[0]) in self.maze.get_neighbors(neighbors_2[1]))
+
+   # Explicit ZigZag maze tests
    def test_neg(self):
       self.maze.zagzig_connect_all()
       self.check_all_connected(Coord(1, 0), (Coord(0, 9), Coord(1, 9)), (Coord(1, 0), Coord(2, 0)))
    def test_zigzag(self):
       self.maze.zigzag_connect_all()
       self.check_all_connected(Coord(0, 1), (Coord(0, 9), Coord(1, 9)), (Coord(1, 0), Coord(2, 0)))
-#      zero = self.maze.get(Coord(0, 0))
-#      doors = zero.get_doors()
-#      #print(str(doors))
-#      one = self.maze.get(Coord(0, 1))
-#      n = self.maze.get_neighbors(Coord(0, 0))
-#      self.assertEqual(n, [one])
-#      self.assertTrue(self.maze.get(Coord(0, 9)) in self.maze.get_neighbors(Coord(1, 9)))
-#      self.assertTrue(self.maze.get(Coord(1, 0)) in self.maze.get_neighbors(Coord(2, 0)))
    def test_zagzig_connect_all(self):
       self.maze.zagzig_connect_all()
       self.check_all_connected(Coord(1, 0), (Coord(0, 9), Coord(1, 9)), (Coord(1, 0), Coord(2, 0)))
-#      zero = self.maze.get(Coord(0, 0))
-#      doors = zero.get_doors()
-#      #print(str(doors))
-#      one = self.maze.get(Coord(1, 0))
-#      n = self.maze.get_neighbors(Coord(0, 0))
-#      self.assertEqual(n, [one])
-#      self.assertTrue(self.maze.get(Coord(0, 9)) in self.maze.get_neighbors(Coord(1, 9)))
-#      self.assertTrue(self.maze.get(Coord(1, 0)) in self.maze.get_neighbors(Coord(2, 0)))
+
+   # SpiralMaze tests
    def test_mono_spiral_connect_all(self):
       self.maze.mono_spiral_connect_all()
       self.check_all_connected(Coord(1, 0), (Coord(0, 9), Coord(1, 9)), (Coord(1, 0), Coord(2, 0)))
-#      self.maze.color_all(0)
-#      self.maze.color_from(1, Coord(0,0))
-#      self.assertEqual(self.maze.get(Coord(4,9)).get_color(), 1) # all connected
+
 
    def test_walk_connect_all(self):
       #self.maze.debug = True
@@ -1121,7 +1183,7 @@ class TestMaze(unittest.TestCase):
 #      self.assertEqual(self.maze.get(Coord(4,9)).get_color(), 1) # all connected
       #self.debug_print_maze(self.maze)
    def test_bi_spiral_connect_all_2(self):
-      test_maze = Maze(5, 11, 'P')
+      test_maze = NewMaze(BI_SPI, 5, 11, 'P')
       test_maze.bi_spiral_connect_all()
       test_maze.color_all(0)
       cycles = test_maze.color_from(1, Coord(0,0))
@@ -1129,7 +1191,7 @@ class TestMaze(unittest.TestCase):
       self.assertEqual(test_maze.get(Coord(4,10)).get_color(), 1) # all connected
       #self.debug_print_maze(test_maze)
    def test_bi_spiral_connect_all_3(self):
-      test_maze = Maze(6, 10, 'S')
+      test_maze = NewMaze(BI_SPI, 6, 10, 'S')
       test_maze.bi_spiral_connect_all()
       test_maze.color_all(0)
       cycles = test_maze.color_from(1, Coord(0,0))
@@ -1137,7 +1199,7 @@ class TestMaze(unittest.TestCase):
       self.assertEqual(test_maze.get(Coord(5,9)).get_color(), 1) # all connected
       #self.debug_print_maze(test_maze)
    def test_bi_spiral_connect_all_4(self):
-      test_maze = Maze(6, 11, 'R')
+      test_maze = NewMaze(BI_SPI, 6, 11, 'R')
       test_maze.bi_spiral_connect_all()
       test_maze.color_all(0)
       cycles = test_maze.color_from(1, Coord(0,0))
@@ -1145,7 +1207,7 @@ class TestMaze(unittest.TestCase):
       self.assertEqual(test_maze.get(Coord(5,10)).get_color(), 1) # all connected
       #self.debug_print_maze(test_maze)
    def test_bi_spiral_connect_all_5(self):
-      test_maze = Maze(3, 3, 'T')
+      test_maze = NewMaze(BI_SPI, 3, 3, 'T')
       test_maze.bi_spiral_connect_all()
       test_maze.color_all(0)
       cycles = test_maze.color_from(1, Coord(0,0))
@@ -1153,42 +1215,15 @@ class TestMaze(unittest.TestCase):
       self.assertEqual(test_maze.get(Coord(2,2)).get_color(), 1) # all connected
       #self.debug_print_maze(test_maze)
    def test_bi_spiral_connect_all_6(self):
-      test_maze = Maze(4, 4, 'A')
+      test_maze = NewMaze(BI_SPI, 4, 4, 'A')
       test_maze.bi_spiral_connect_all()
       test_maze.color_all(0)
       cycles = test_maze.color_from(1, Coord(0,0))
       self.assertEqual(cycles, 0)
       self.assertEqual(test_maze.get(Coord(3,3)).get_color(), 1) # all connected
       #self.debug_print_maze(test_maze)
-   def debug_print_maze(self, the_maze):
-      def d(c):
-         answer = ''
-         for direction in range(4):
-            answer += '_' if not c.has_door(direction) else ('N','E','S','W')[direction]
-         return answer
-      doors = [[d(c) for c in row] for row in the_maze.grid]
-      print('doors:')
-      for line in doors:
-         print(line)
-   def debug_print_maze_colors(self, the_maze):
-      grid = [['%03d'%c.get_color() for c in row] for row in the_maze.grid]
-      print('colors:')
-      for line in grid:
-         print(line)
-   def debug_print_under_maze(self, the_maze):
-       def d(c):
-          u = c.get_under_cell()
-          if u is None:
-              return '    '
-          answer = ''
-          for direction in range(4):
-              answer += '_' if not u.has_door(direction) else ('N','E','S','W')[direction]
-          return answer
-       doors = [[d(c) for c in row] for row in the_maze.grid]
-       print('doors:')
-       for line in doors:
-           print(line)
 
+   # ZigZag tests
    def test_color_all(self):
       self.maze.color_all(3)
       self.assertEqual(self.maze.get(Coord(4,9)).get_color(), 3)
@@ -1245,8 +1280,9 @@ class TestMaze(unittest.TestCase):
                cell = self.maze.get(coord)
                is_color = cell.get_color()
                self.assertEqual(is_color, color, '%s is color %d, not %d' % (cell, is_color, color))
+
    def test_path_from_to(self):
-      test_maze = Maze(3, 3, 'T')
+      test_maze = NewMaze(BI_SPI, 3, 3, 'T')
       test_maze.bi_spiral_connect_all()
       test_maze.color_all(0)
       test_maze.color_from(1, Coord(0,0))
