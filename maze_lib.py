@@ -826,6 +826,7 @@ class Maze(object):
                    return False
        return True
        
+   # Weaved Kruskal
    def exp_2(self):
        path_maker = PathMaker(self.height, self.width, 8)
        #path_maker.make_unordered_point_list()
@@ -910,6 +911,7 @@ class Maze(object):
        return len(candidates) > 0
 
 
+   # this is only used in split_tree
    def build_path(self, path, color):
        for i in range(len(path)-1):
            current = path[i]
@@ -919,6 +921,7 @@ class Maze(object):
            self.add_door(current, step_direction)
        self.get(path[-1]).set_color(color)
 
+   # this is only used in the weaved kruskal (but is it usefull elsewhere?
    def build_from_to(self, from_coord, to_coord, color):
        current = self.get(from_coord)
        current.set_color(color)
@@ -943,6 +946,7 @@ class Maze(object):
                        #print('Back up!')
            current = self.extend_one_step(current, step_direction, color)
 
+   # this is only used in the weaved kruskal
    def pick_direction_from_to(self, current, goal):
        delta_x = goal.x - current.x
        delta_y = goal.y - current.y
@@ -1155,19 +1159,19 @@ class TestMaze(unittest.TestCase):
       self.maze.mono_spiral_connect_all()
       self.check_all_connected(Coord(1, 0), (Coord(0, 9), Coord(1, 9)), (Coord(1, 0), Coord(2, 0)))
 
-
+   # RandomWalkMaze
    def test_walk_connect_all(self):
       #self.maze.debug = True
       self.maze.walk_connect_all()
       #self.debug_print_maze(self.maze)
       self.check_all_connected(None, None, None)
 
+   # RandomRunMaze
    def test_run_connect_all(self):
       #self.maze.debug = True
       self.maze.run_connect_all()
       #self.debug_print_maze(self.maze)
       self.check_all_connected(None, None, None)
-
    def test_pick_new_current(self):
        self.maze.color_all(1)
        c = self.maze.pick_random_cell()
@@ -1175,13 +1179,10 @@ class TestMaze(unittest.TestCase):
        n, d = self.maze.pick_new_current(c, 5)
        self.assertEqual(c, n)
 
+   # DoubleSpiralMaze
    def test_bi_spiral_connect_all(self):
       self.maze.bi_spiral_connect_all()
       self.check_all_connected(Coord(1, 0), (Coord(0, 9), Coord(1, 9)), (Coord(1, 0), Coord(2, 0)))
-#      self.maze.color_all(0)
-#      self.maze.color_from(1, Coord(0,0))
-#      self.assertEqual(self.maze.get(Coord(4,9)).get_color(), 1) # all connected
-      #self.debug_print_maze(self.maze)
    def test_bi_spiral_connect_all_2(self):
       test_maze = NewMaze(BI_SPI, 5, 11, 'P')
       test_maze.bi_spiral_connect_all()
@@ -1189,7 +1190,6 @@ class TestMaze(unittest.TestCase):
       cycles = test_maze.color_from(1, Coord(0,0))
       self.assertEqual(cycles, 0)
       self.assertEqual(test_maze.get(Coord(4,10)).get_color(), 1) # all connected
-      #self.debug_print_maze(test_maze)
    def test_bi_spiral_connect_all_3(self):
       test_maze = NewMaze(BI_SPI, 6, 10, 'S')
       test_maze.bi_spiral_connect_all()
@@ -1281,6 +1281,7 @@ class TestMaze(unittest.TestCase):
                is_color = cell.get_color()
                self.assertEqual(is_color, color, '%s is color %d, not %d' % (cell, is_color, color))
 
+   # DoubleSpiralMaze
    def test_path_from_to(self):
       test_maze = NewMaze(BI_SPI, 3, 3, 'T')
       test_maze.bi_spiral_connect_all()
@@ -1291,6 +1292,8 @@ class TestMaze(unittest.TestCase):
       #print(path)
       #self.assertEqual(path, [Coord(2,2), Coord(1,2), Coord(0,2), Coord(0,1), Coord(1,1), Coord(2,1), Coord(2,0), Coord(1,0), Coord(0,0)])
       self.assertEqual(path, [Coord(0,0), Coord(1,0), Coord(2,0), Coord(2,1), Coord(1,1), Coord(0,1), Coord(0,2), Coord(1,2), Coord(2,2)])
+
+   # WeavedKruskal
    def test_pick_direction_from_to(self):
        a = Coord(5,5)
        self.assertEqual(self.maze.pick_direction_from_to(a, Coord(5,3))[0], 3)
@@ -1309,6 +1312,7 @@ class TestMaze(unittest.TestCase):
        test_maze.build_from_to(Coord(2,2), Coord(0,0), color)
        #self.debug_print_maze(test_maze)
        self.assertEqual(test_maze.get(Coord(2,0)).get_color(), 5)
+
    def test_random_walk(self):
        test_maze = Maze(100, 100, 'T')
        p = test_maze.random_walk(test_maze.get(Coord(20,20)), 5, 5) # limit 5 must be reachable in an empty maze
