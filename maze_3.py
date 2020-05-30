@@ -3,6 +3,17 @@ import sys
 import maze_lib
 import random
 
+class InfoProgressReporter(object):
+   def __init__(self, msg):
+      self.msg = msg
+      self.hundredths = 0
+   def report(self, x, out_of_y):
+      percent = (x*100)//out_of_y
+      if percent > self.hundredths:
+         self.hundredths = percent
+         self.msg.config(text="%d out of %d" % (x, out_of_y))
+         self.msg.update()
+
 class MazeApp(object):
    HEIGHT = 1150
    WIDTH = 800
@@ -79,10 +90,12 @@ class MazeApp(object):
       self.button_test = Tkinter.Button(self.frame, text='Test', command=self.draw_test)
       self.button_test.pack(side=Tkinter.LEFT)
 
-      self.msg_text = Tkinter.StringVar(self.frame)
-      self.msg_text.set('information')
-      self.msg = Tkinter.Message(self.frame, textvariable=self.msg_text, relief=Tkinter.RAISED, width=200)
+      #self.msg_text = Tkinter.StringVar(self.frame)
+      #self.msg_text.set('information')
+      #self.msg = Tkinter.Message(self.frame, textvariable=self.msg_text, relief=Tkinter.RAISED, width=200)
+      self.msg = Tkinter.Message(self.frame, text='information', relief=Tkinter.RAISED, width=200)
       self.msg.pack(side=Tkinter.RIGHT)
+      self.progress = InfoProgressReporter(self.msg)
 
       self.area = Tkinter.Canvas(master, width=self.WIDTH, height=self.HEIGHT, relief=Tkinter.RIDGE)
       self.area.pack(side=Tkinter.BOTTOM)
@@ -130,7 +143,7 @@ class MazeApp(object):
       self.effective_x = self.X
       self.effective_y = self.Y
       self.maze = maze_lib.Maze(self.X, self.Y, 'Spiral')
-      self.maze.connect_all(self.get_outer_style())
+      self.maze.connect_all(self.get_outer_style(), self.progress)
       for i in range(self.get_outer_count()):
          self.maze.move_door()
       if self.outer_style.get() == "split_tree":
@@ -153,12 +166,11 @@ class MazeApp(object):
           self.maze.open_outer_walls()
       else:
           self.maze = maze_lib.Maze(self.X, self.Y, 'Spiral')
-          self.maze.split_tree(x, y, self.X//x, self.Y//y, self.get_inner_style(), maze_lib.R_WALK)
+          self.maze.split_tree(x, y, self.X//x, self.Y//y, self.get_inner_style(), maze_lib.R_WALK, self.progress)
           self.maze.open_outer_walls()
 
    def prepare_maze(self):
       #description = '%s %s %d' % (self.zone_opt.get(), self.outer_style.get(), self.get_outer_count())
-      #self.msg_text.set(description)
       if (self.row_count.get() == '1') and (self.col_count.get() == '1'):
          self.prepare_mono_maze()
       else:
@@ -197,9 +209,10 @@ class MazeApp(object):
 
    def complete_split_tree(self):
        self.clear_canvas()
-       self.maze.split_tree_again()
+       self.maze.split_tree_again(self.progress)
        self.maze.open_outer_walls()
        self.draw_maze(self.cell_size, self.NUDGE)
+       self.button_more.config(state=Tkinter.DISABLED)
 
    def draw_test(self):
        self.clear_canvas()

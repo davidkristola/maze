@@ -313,6 +313,13 @@ class TestPathQueue(unittest.TestCase):
         uut.add([7, 8, 9, 10, 11, 12, 13, 14])
         self.assertEqual(uut.count(), 3)
 
+class SilentProgressReporter(object):
+   def __init__(self):
+      self.debug = False
+   def report(self, x, out_of_y):
+      if self.debug:
+         print("%d out of %d" % (x, out_of_y))
+
 class Maze(object):
    def __init__(self, height, width, zone):
       self.width = width
@@ -347,27 +354,27 @@ class Maze(object):
        return self.grid[actual.x][actual.y]
 
    #TODO: change style from an input here to a subclass of Maze
-   def connect_all(self, style):
+   def connect_all(self, style, progress_reporter = SilentProgressReporter()):
       if style == RANDOM:
-         self.connect_all(random.randint(ZIGZAG, LAST_STYLE))
+         self.connect_all(random.randint(ZIGZAG, LAST_STYLE), progress_reporter)
       elif style == ZIGZAG:
-         self.zigzag_connect_all()
+         self.zigzag_connect_all(progress_reporter)
       elif style == SPIRAL:
-         self.mono_spiral_connect_all()
+         self.mono_spiral_connect_all(progress_reporter)
       elif style == BI_SPI:
-         self.bi_spiral_connect_all()
+         self.bi_spiral_connect_all(progress_reporter)
       elif style == ZAGZIG:
-         self.zagzig_connect_all()
+         self.zagzig_connect_all(progress_reporter)
       elif style == R_WALK:
-         self.walk_connect_all()
+         self.walk_connect_all(progress_reporter)
       elif style == RANRUN:
-         self.run_connect_all()
+         self.run_connect_all(progress_reporter)
       elif style == KRUSKAL:
-         self.kruskal()
+         self.kruskal(progress_reporter)
       elif style == EXP_2:
-         self.kruskal_weave(self.height*self.width//50)
+         self.kruskal_weave(self.height*self.width//50, progress_reporter)
       elif style == SPLIT_TREE:
-          self.split_tree(5, 5, self.height//5, self.width//5, R_WALK, R_WALK)
+          self.split_tree(5, 5, self.height//5, self.width//5, R_WALK, R_WALK, progress_reporter)
       self.validate_maze()
 
    def validate_maze(self):
@@ -381,7 +388,7 @@ class Maze(object):
        #if self.get(other_end).get_color() != 1:
        #    print("ERROR: Maze ends are not connected!")
 
-   def zigzag_connect_all(self):
+   def zigzag_connect_all(self, progress_reporter = None):
       for x in range(self.height):
          for y in range(self.width - 1):
             self.add_door(Coord(x, y), EAST)
@@ -391,7 +398,7 @@ class Maze(object):
          self.add_door(Coord(x, y), SOUTH)
          right = not right
 
-   def zagzig_connect_all(self):
+   def zagzig_connect_all(self, progress_reporter = None):
       for x in range(self.height - 1):
          for y in range(self.width):
             self.add_door(Coord(x, y), SOUTH)
@@ -401,7 +408,7 @@ class Maze(object):
          self.add_door(Coord(x, y), EAST)
          top = not top
 
-   def mono_spiral_connect_all(self):
+   def mono_spiral_connect_all(self, progress_reporter = None):
       self.color_all(0)
       current = Coord(0,0)
       direction = SOUTH
@@ -420,7 +427,7 @@ class Maze(object):
          self.add_door(current, direction)
          current = next
 
-   def bi_spiral_connect_all(self):
+   def bi_spiral_connect_all(self, progress_reporter = None):
       self.color_all(0)
       current = [Coord(0,0), Coord(self.height-1, self.width-1)]
       direction = [SOUTH, NORTH]
@@ -441,10 +448,13 @@ class Maze(object):
          current[ab] = next
          ab = (ab + 1) % 2
 
-   def walk_connect_all(self):
+   def walk_connect_all(self, progress = None):
       self.color_all(1)
       current = self.pick_random_cell()
-      for i in range((self.height*self.width)-1):
+      complete = (self.height*self.width)-1
+      for i in range(complete):
+         if progress:
+            progress.report(i, complete-1)
          current.set_color(5)
          step_direction = self.pick_random_bicolor_wall(current)
          if step_direction is None:
@@ -468,14 +478,16 @@ class Maze(object):
              self.add_door(current.get_coord(), step_direction)
          current = self.get(next_coord)
 
-   def run_connect_all(self):
+   def run_connect_all(self, progress = None):
        self.color_all(1)
        current = self.pick_random_cell()
        color = 5
        current.set_color(color)
        step_direction = random.choice([0, 1, 2, 3])
-       for i in range((self.height*self.width)-1):
-           #print('current = %s, step_direrction = %d' % (current, step_direction))
+       complete = (self.height*self.width)-1
+       for i in range(complete):
+           if progress:
+              progress.report(i, complete-1)
            if not self.can_build(current, step_direction):
                #print('start new run at %d' % (i))
                (current, step_direction) = self.pick_new_current(current, color)
@@ -742,11 +754,11 @@ class Maze(object):
                self.set_for_cell[ce_1.get_id()] = set_number
                self.cells_in_set[set_number] = set([ce_1.get_id()])
 
-   def kruskal(self):
+   def kruskal(self, progress_reporter = None):
        self.set_up_unlinked_kruskal()
        self.kruskal_join_all()
 
-   def kruskal_weave(self, weave_count):
+   def kruskal_weave(self, weave_count, progress_reporter = None):
        self.set_up_unlinked_kruskal()
        for _ in range(weave_count):
            self.kruskal_weave_over_under_cross(self.pick_random_coord())
@@ -826,7 +838,7 @@ class Maze(object):
                    return False
        return True
        
-   # Weaved Kruskal
+   # This is not Weaved Kruskal... is it dead code?
    def exp_2(self):
        path_maker = PathMaker(self.height, self.width, 8)
        #path_maker.make_unordered_point_list()
@@ -845,14 +857,14 @@ class Maze(object):
                except:
                    pass
 
-   def split_tree(self, grid_x, grid_y, sub_x, sub_y, outer_style, inner_style):
+   def split_tree(self, grid_x, grid_y, sub_x, sub_y, outer_style, inner_style, progress_reporter = None):
        path_maker = PathMaker2(grid_x, grid_y, sub_x, sub_y)
        path = path_maker.make_path(outer_style, inner_style)
        self.build_path(path, 8)
        self.path_queue = PathQueue(self.height*self.width)
        self.path_queue.add(path)
 
-   def split_tree_again(self):
+   def split_tree_again(self, progress_reporter = None):
        #for i in range(10):
        while (self.path_queue.count() > 0):
            self.split_tree_more()
