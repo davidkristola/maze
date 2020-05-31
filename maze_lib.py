@@ -14,7 +14,9 @@ RANRUN = 6
 KRUSKAL = 7
 EXP_2 = 8
 SPLIT_TREE = 9
-LAST_STYLE = SPLIT_TREE
+SPLIT_TREE_V2 = 10
+KRUSKAL_WALK = 11
+LAST_STYLE = KRUSKAL_WALK
 
 # directions
 NORTH = 0
@@ -375,6 +377,10 @@ class Maze(object):
          self.kruskal_weave(self.height*self.width//50, progress_reporter)
       elif style == SPLIT_TREE:
           self.split_tree(5, 5, self.height//5, self.width//5, R_WALK, R_WALK, progress_reporter)
+      elif style == SPLIT_TREE_V2:
+          self.split_tree(self.height//5, self.width//5, 5, 5, R_WALK, R_WALK, progress_reporter)
+      elif style == KRUSKAL_WALK:
+          self.kruskal_with_walks(progress_reporter)
       self.validate_maze()
 
    def validate_maze(self):
@@ -764,6 +770,13 @@ class Maze(object):
            self.kruskal_weave_over_under_cross(self.pick_random_coord())
        self.kruskal_join_all()
 
+   def kruskal_with_walks(self, progress = None):
+       self.set_up_unlinked_kruskal()
+       self.color_all(1)
+       for _ in range(20):
+           self.kruskal_walk(self.get(self.pick_random_coord()), 2, 5)
+       self.kruskal_join_all()
+
    def kruskal_join_all(self):
        self.color_all(1)
        neighbors = self.all_nextdoor_pairs()
@@ -837,7 +850,28 @@ class Maze(object):
                if cell_here.has_under_cell():
                    return False
        return True
-       
+
+   def kruskal_walk(self, start, color, limit):
+       path_taken = [start.get_coord()]
+       current = start
+       current.set_color(color)
+       step_direction = self.pick_random_bicolor_wall(current)
+       attempts = 0
+       while (step_direction != None) and (len(path_taken) < limit) and (attempts < 2*limit):
+           attempts += 1
+           next_coord = current.get_coord().step(step_direction)
+           assert current.get_color() != self.get(next_coord).get_color()
+           next_cell = self.get(next_coord)
+           if self.can_kruskal_join(current, next_cell):
+               self.kruskal_join(current, step_direction, next_cell)
+               current = next_cell
+               current.set_color(color)
+               current.set_distance(len(path_taken))
+               current.set_prev(path_taken[-1])
+               path_taken += [next_coord]
+           step_direction = self.pick_random_bicolor_wall(current)
+       return path_taken
+
    # This is not Weaved Kruskal... is it dead code?
    def exp_2(self):
        path_maker = PathMaker(self.height, self.width, 8)

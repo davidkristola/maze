@@ -53,7 +53,7 @@ class MazeApp(object):
       self.button_redraw = Tkinter.Button(self.frame, text='Redraw', command=self.redraw_maze)
       self.button_redraw.pack(side=Tkinter.LEFT)
 
-      maze_styles = ['zigzag', 'zagzig', 'spiral', 'double-spiral', 'walk', 'run', 'random', 'kruskal', 'weaved', 'split_tree']
+      maze_styles = ['zigzag', 'zagzig', 'spiral', 'double-spiral', 'walk', 'run', 'random', 'kruskal', 'weaved', 'split_tree', 'split_tree_v2', 'kruskal_walk']
       shuffle_counts = ['0', '1', '2', '4', '8', '16', '24', '32', '48', '64', '128']
 
       self.outer_style = Tkinter.StringVar(self.frame)
@@ -130,6 +130,10 @@ class MazeApp(object):
           return maze_lib.EXP_2
       elif name == "split_tree":
           return maze_lib.SPLIT_TREE
+      elif name == "split_tree_v2":
+          return maze_lib.SPLIT_TREE_V2
+      elif name == "kruskal_walk":
+          return maze_lib.KRUSKAL_WALK
       else:
          return maze_lib.BI_SPI
 
@@ -146,7 +150,7 @@ class MazeApp(object):
       self.maze.connect_all(self.get_outer_style(), self.progress)
       for i in range(self.get_outer_count()):
          self.maze.move_door()
-      if self.outer_style.get() == "split_tree":
+      if (self.outer_style.get() == "split_tree") or (self.outer_style.get() == "split_tree_v2"):
           self.button_more.config(state=Tkinter.NORMAL)
       else:
           self.maze.open_outer_walls()
@@ -160,7 +164,7 @@ class MazeApp(object):
       print('effective (x, y) = (%d, %d)' % (self.effective_x, self.effective_y))
       print('self.X//x = %d, self.Y//y = %d' % (self.X//x, self.Y//y))
       print('EAST door (x, y) = (%d, %d)' % (self.X-1,self.Y-1))
-      if self.outer_style.get() != "split_tree":
+      if (self.outer_style.get() != "split_tree") and (self.outer_style.get() != "split_tree_v2"):
           self.maze = maze_lib.Zone(x, y, self.X//x, self.Y//y, False)
           self.maze.prepare(self.get_inner_count(), self.get_inner_style(), self.get_outer_count(), self.get_outer_style())
           self.maze.open_outer_walls()
@@ -223,7 +227,8 @@ class MazeApp(object):
        self.draw_seed()
 
    def draw_seed(self):
-       self.area.create_text(70, self.HEIGHT-118, font="Times", text=str(self.seed))
+       info = str(self.seed) + " " + self.outer_style.get()
+       self.area.create_text(170, self.HEIGHT-118, font="Times", text=info)
        print('Seed = %d' % self.seed)
 
    def draw_maze(self, cell_size, maze_shift):
