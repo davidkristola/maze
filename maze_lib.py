@@ -773,8 +773,10 @@ class Maze(object):
    def kruskal_with_walks(self, progress = None):
        self.set_up_unlinked_kruskal()
        self.color_all(1)
-       for _ in range(20):
-           self.kruskal_walk(self.get(self.pick_random_coord()), 2, 5)
+       for i in range(90):
+           self.kruskal_walk(self.get(self.pick_random_coord()), 2, 20)
+
+   def complete_kruskal_walk(self, progress = None):
        self.kruskal_join_all()
 
    def kruskal_join_all(self):

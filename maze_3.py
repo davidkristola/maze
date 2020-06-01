@@ -41,7 +41,7 @@ class MazeApp(object):
       self.button_draw = Tkinter.Button(self.frame, text='Draw', command=self.draw_next_maze)
       self.button_draw.pack(side=Tkinter.LEFT)
 
-      self.button_more = Tkinter.Button(self.frame, text='Complete', command=self.complete_split_tree)
+      self.button_more = Tkinter.Button(self.frame, text='Complete', command=self.complete_maze)
       self.button_more.pack(side=Tkinter.LEFT)
       self.button_more.config(state=Tkinter.DISABLED)
 
@@ -89,6 +89,9 @@ class MazeApp(object):
 
       self.button_test = Tkinter.Button(self.frame, text='Test', command=self.draw_test)
       self.button_test.pack(side=Tkinter.LEFT)
+
+      self.button_solution = Tkinter.Button(self.frame, text='S', command=self.draw_solution)
+      self.button_solution.pack(side=Tkinter.LEFT)
 
       #self.msg_text = Tkinter.StringVar(self.frame)
       #self.msg_text.set('information')
@@ -150,7 +153,7 @@ class MazeApp(object):
       self.maze.connect_all(self.get_outer_style(), self.progress)
       for i in range(self.get_outer_count()):
          self.maze.move_door()
-      if (self.outer_style.get() == "split_tree") or (self.outer_style.get() == "split_tree_v2"):
+      if (self.outer_style.get() == "split_tree") or (self.outer_style.get() in ["split_tree_v2", "kruskal_walk"]):
           self.button_more.config(state=Tkinter.NORMAL)
       else:
           self.maze.open_outer_walls()
@@ -211,9 +214,22 @@ class MazeApp(object):
       except:
           pass
 
+   def complete_maze(self):
+       if (self.outer_style.get() in ["split_tree", "split_tree_v2"]):
+           self.complete_split_tree()
+       else:
+           self.complete_kruskal_walk()
+
    def complete_split_tree(self):
        self.clear_canvas()
        self.maze.split_tree_again(self.progress)
+       self.maze.open_outer_walls()
+       self.draw_maze(self.cell_size, self.NUDGE)
+       self.button_more.config(state=Tkinter.DISABLED)
+
+   def complete_kruskal_walk(self):
+       self.clear_canvas()
+       self.maze.complete_kruskal_walk(self.progress)
        self.maze.open_outer_walls()
        self.draw_maze(self.cell_size, self.NUDGE)
        self.button_more.config(state=Tkinter.DISABLED)
@@ -241,6 +257,19 @@ class MazeApp(object):
             tool = self.tool_factory(cell_size, x1, y1, maze_lib.Coord(x, y))
             tool.draw_cell()
       self.draw_seed()
+
+   def draw_solution(self):
+       cell_size = self.cell_size
+       maze_shift = self.NUDGE
+       self.maze.color_all(0)
+       path = self.maze.path_from_to(self.maze.get_first_coord(), self.maze.get_last_coord(), 1)
+       for coord in path:
+           x = coord.x
+           y = coord.y
+           x1 = ((x+1) * cell_size) + maze_shift
+           y1 = ((y+1) * cell_size) + maze_shift
+           tool = CellPainterSolution(cell_size, self.area, x1, y1, maze_lib.Coord(x, y))
+           tool.draw_cell()
 
    def tool_factory(self, cell_size, x, y, coord):
        cell = self.maze.get(coord)
@@ -443,6 +472,13 @@ class CellPainterWire2(CellPainterWire):
         step_1 = self.pixel_step(direction, start, self.cell_size//2)
         step_2 = self.pixel_step(d_minus_1, step_1, self.cell_size//2)
         return step_2
+
+class CellPainterSolution(CellPainterWire):
+    def draw_cell(self):
+        (x1, y1) = (self.x, self.y)
+        center = self.bisect(self.corners[0], self.corners[2])
+        s1 = int(self.cell_size//3)
+        self.area.create_oval(center[0]-s1, center[1]-s1, center[0]+s1, center[1]+s1, fill='red')
 
 def run_program(seed):
    root = Tkinter.Tk()
