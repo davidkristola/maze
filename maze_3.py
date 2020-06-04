@@ -87,11 +87,14 @@ class MazeApp(object):
       self.inner_count_menu = Tkinter.OptionMenu(self.frame, self.inner_count, *shuffle_counts)
       self.inner_count_menu.pack(side=Tkinter.LEFT)
 
-      self.button_test = Tkinter.Button(self.frame, text='Test', command=self.draw_test)
+      self.button_test = Tkinter.Button(self.frame, text='T', command=self.draw_test)
       self.button_test.pack(side=Tkinter.LEFT)
 
       self.button_solution = Tkinter.Button(self.frame, text='S', command=self.draw_solution)
       self.button_solution.pack(side=Tkinter.LEFT)
+
+      self.button_distance = Tkinter.Button(self.frame, text='D', command=self.draw_distance)
+      self.button_distance.pack(side=Tkinter.LEFT)
 
       #self.msg_text = Tkinter.StringVar(self.frame)
       #self.msg_text.set('information')
@@ -262,14 +265,35 @@ class MazeApp(object):
        cell_size = self.cell_size
        maze_shift = self.NUDGE
        self.maze.color_all(0)
-       path = self.maze.path_from_to(self.maze.get_first_coord(), self.maze.get_last_coord(), 1)
-       for coord in path:
+       #path = self.maze.path_from_to(self.maze.get_first_coord(), self.maze.get_last_coord(), 1)
+       #for coord in path:
+       #    x = coord.x
+       #    y = coord.y
+       #    x1 = ((x+1) * cell_size) + maze_shift
+       #    y1 = ((y+1) * cell_size) + maze_shift
+       #    tool = CellPainterSolution(cell_size, self.area, x1, y1, self.maze.get(maze_lib.Coord(x, y)))
+       #    tool.draw_cell()
+       path = self.maze.cells_from_to(self.maze.get_first_cell(), self.maze.get_last_cell(), 1)
+       for cell in path:
+           coord = cell.get_coord()
            x = coord.x
            y = coord.y
            x1 = ((x+1) * cell_size) + maze_shift
            y1 = ((y+1) * cell_size) + maze_shift
-           tool = CellPainterSolution(cell_size, self.area, x1, y1, maze_lib.Coord(x, y))
+           tool = CellPainterSolution(cell_size, self.area, x1, y1, cell)
            tool.draw_cell()
+
+   def draw_distance(self):
+      cell_size = self.cell_size
+      maze_shift = self.NUDGE
+      max_dist = self.maze.distance_from(self.maze.get_first_cell())
+      print("max_distance = %d" % (max_dist))
+      for x in range(self.effective_x):
+         for y in range(self.effective_y):
+            x1 = ((x+1) * cell_size) + maze_shift
+            y1 = ((y+1) * cell_size) + maze_shift
+            tool = CellPainterDistance(cell_size, self.area, x1, y1, self.maze.get(maze_lib.Coord(x, y)))
+            tool.color_cell(max_dist)
 
    def tool_factory(self, cell_size, x, y, coord):
        cell = self.maze.get(coord)
@@ -385,7 +409,8 @@ class CellPainterOctagon(CellPainter):
 class CellPainterInset(CellPainter):
     def draw_cell(self):
         if self.cell.get_door_count() == 0: return
-        s1 = int(self.cell_size//6)
+        thickness = 5 #6
+        s1 = int(self.cell_size//thickness)
         s3 = self.cell_size - s1
         (x1, y1) = (self.x, self.y)
 
@@ -479,6 +504,16 @@ class CellPainterSolution(CellPainterWire):
         center = self.bisect(self.corners[0], self.corners[2])
         s1 = int(self.cell_size//3)
         self.area.create_oval(center[0]-s1, center[1]-s1, center[0]+s1, center[1]+s1, fill='red')
+
+class CellPainterDistance(CellPainterWire):
+    def color_cell(self, max_dist):
+        (x1, y1) = (self.x, self.y)
+        center = self.bisect(self.corners[0], self.corners[2])
+        s1 = int(self.cell_size//3)
+        d = (255*self.cell.get_distance())//max_dist
+        rgb = (d, d, 255)
+        color = "#%02x%02x%02x" % rgb
+        self.area.create_oval(center[0]-s1, center[1]-s1, center[0]+s1, center[1]+s1, fill=color, outline=color)
 
 def run_program(seed):
    root = Tkinter.Tk()

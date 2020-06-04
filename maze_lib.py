@@ -661,6 +661,59 @@ class Maze(object):
           path += [c]
       return path
 
+   def cells_from_to(self, start, stop, color):
+      '''BFS'''
+      x = start
+      x.set_color(color)
+      x.set_prev(None)
+      x.set_distance(0)
+      neighbors = x.get_neighbors()
+      for n in neighbors:
+          n.set_prev(x)
+      explore = neighbors
+      while len(explore) != 0:
+         x = explore[0]
+         del(explore[0])
+         x.set_color(color)
+         neighbors = [y for y in x.get_neighbors() if not y.is_color(color)]
+         d = x.get_distance() + 1
+         for n in neighbors:
+             n.set_prev(x)
+             n.set_distance(d)
+         explore += neighbors
+      path = [stop]
+      c = stop
+      while c != start:
+          c = c.get_prev()
+          path += [c]
+      path.reverse()
+      return path
+
+   def distance_from(self, start_cell):
+      '''BFS'''
+      self.color_all(0)
+      color = 1
+      max_distance = 0
+      current = start_cell
+      current.set_color(color)
+      current.set_distance(0)
+      explore = current.get_neighbors()
+      for n in explore:
+         n.set_distance(1)
+      while len(explore) != 0:
+         current = explore[0]
+         del(explore[0])
+         if current is not None:
+             current.set_color(color)
+             d = current.get_distance() + 1
+             if d > max_distance:
+                max_distance = d
+             neighbors = [y for y in current.get_neighbors() if not y.is_color(color)]
+             for n in neighbors:
+                n.set_distance(d)
+             explore += neighbors
+      return max_distance
+
    def pick_random_door(self):
       # precondition: every cell must have at least one door
       x = random.randint(0, self.height-1)
@@ -1340,6 +1393,15 @@ class TestMaze(unittest.TestCase):
       #print(path)
       #self.assertEqual(path, [Coord(2,2), Coord(1,2), Coord(0,2), Coord(0,1), Coord(1,1), Coord(2,1), Coord(2,0), Coord(1,0), Coord(0,0)])
       self.assertEqual(path, [Coord(0,0), Coord(1,0), Coord(2,0), Coord(2,1), Coord(1,1), Coord(0,1), Coord(0,2), Coord(1,2), Coord(2,2)])
+   def test_cells_from_to(self):
+      test_maze = NewMaze(BI_SPI, 3, 3, 'T')
+      test_maze.bi_spiral_connect_all()
+      test_maze.color_all(0)
+      test_maze.color_from(1, Coord(0,0))
+      path = test_maze.cells_from_to(test_maze.get(Coord(0,0)), test_maze.get(Coord(2,2)), 2)
+      #print(path)
+      #self.assertEqual(path, [Coord(2,2), Coord(1,2), Coord(0,2), Coord(0,1), Coord(1,1), Coord(2,1), Coord(2,0), Coord(1,0), Coord(0,0)])
+      self.assertEqual(path, [test_maze.get(Coord(0,0)), test_maze.get(Coord(1,0)), test_maze.get(Coord(2,0)), test_maze.get(Coord(2,1)), test_maze.get(Coord(1,1)), test_maze.get(Coord(0,1)), test_maze.get(Coord(0,2)), test_maze.get(Coord(1,2)), test_maze.get(Coord(2,2))])
 
    # WeavedKruskal
    def test_pick_direction_from_to(self):
