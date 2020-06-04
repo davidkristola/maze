@@ -500,14 +500,12 @@ class CellPainterWire2(CellPainterWire):
 
 class CellPainterSolution(CellPainterWire):
     def draw_cell(self):
-        (x1, y1) = (self.x, self.y)
         center = self.bisect(self.corners[0], self.corners[2])
         s1 = int(self.cell_size//3)
         self.area.create_oval(center[0]-s1, center[1]-s1, center[0]+s1, center[1]+s1, fill='red')
 
 class CellPainterDistance(CellPainterWire):
     def color_cell(self, max_dist):
-        (x1, y1) = (self.x, self.y)
         center = self.bisect(self.corners[0], self.corners[2])
         s1 = int(self.cell_size//3)
         d = (255*self.cell.get_distance())//max_dist
