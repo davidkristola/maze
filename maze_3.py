@@ -53,7 +53,7 @@ class MazeApp(object):
       self.button_redraw = Tkinter.Button(self.frame, text='Redraw', command=self.redraw_maze)
       self.button_redraw.pack(side=Tkinter.LEFT)
 
-      maze_styles = ['zigzag', 'zagzig', 'spiral', 'double-spiral', 'walk', 'run', 'random', 'kruskal', 'weaved', 'split_tree', 'split_tree_v2', 'kruskal_walk']
+      maze_styles = maze_lib.maze_style_names()
       shuffle_counts = ['0', '1', '2', '4', '8', '16', '24', '32', '48', '64', '128']
 
       self.outer_style = Tkinter.StringVar(self.frame)
@@ -66,26 +66,26 @@ class MazeApp(object):
       self.outer_count_menu = Tkinter.OptionMenu(self.frame, self.outer_count, *shuffle_counts)
       self.outer_count_menu.pack(side=Tkinter.LEFT)
 
-      self.row_count = Tkinter.StringVar(self.frame)
-      self.row_count.set('1')
-      self.row_count_menu = Tkinter.OptionMenu(self.frame, self.row_count, *([str(x+1) for x in range(9)]))
-      self.row_count_menu.pack(side=Tkinter.LEFT)
+      #self.row_count = Tkinter.StringVar(self.frame)
+      #self.row_count.set('1')
+      #self.row_count_menu = Tkinter.OptionMenu(self.frame, self.row_count, *([str(x+1) for x in range(9)]))
+      #self.row_count_menu.pack(side=Tkinter.LEFT)
 
-      self.col_count = Tkinter.StringVar(self.frame)
-      self.col_count.set('1')
-      self.col_count_menu = Tkinter.OptionMenu(self.frame, self.col_count, *([str(x+1) for x in range(9)]))
-      self.col_count_menu.pack(side=Tkinter.LEFT)
+      #self.col_count = Tkinter.StringVar(self.frame)
+      #self.col_count.set('1')
+      #self.col_count_menu = Tkinter.OptionMenu(self.frame, self.col_count, *([str(x+1) for x in range(9)]))
+      #self.col_count_menu.pack(side=Tkinter.LEFT)
 
 
-      self.inner_style = Tkinter.StringVar(self.frame)
-      self.inner_style.set('zigzag')
-      self.inner_style_menu = Tkinter.OptionMenu(self.frame, self.inner_style, *maze_styles)
-      self.inner_style_menu.pack(side=Tkinter.LEFT)
+      #self.inner_style = Tkinter.StringVar(self.frame)
+      #self.inner_style.set('zigzag')
+      #self.inner_style_menu = Tkinter.OptionMenu(self.frame, self.inner_style, *maze_styles)
+      #self.inner_style_menu.pack(side=Tkinter.LEFT)
 
-      self.inner_count = Tkinter.StringVar(self.frame)
-      self.inner_count.set('0')
-      self.inner_count_menu = Tkinter.OptionMenu(self.frame, self.inner_count, *shuffle_counts)
-      self.inner_count_menu.pack(side=Tkinter.LEFT)
+      #self.inner_count = Tkinter.StringVar(self.frame)
+      #self.inner_count.set('0')
+      #self.inner_count_menu = Tkinter.OptionMenu(self.frame, self.inner_count, *shuffle_counts)
+      #self.inner_count_menu.pack(side=Tkinter.LEFT)
 
       self.button_test = Tkinter.Button(self.frame, text='T', command=self.draw_test)
       self.button_test.pack(side=Tkinter.LEFT)
@@ -152,39 +152,41 @@ class MazeApp(object):
    def prepare_mono_maze(self):
       self.effective_x = self.X
       self.effective_y = self.Y
-      self.maze = maze_lib.Maze(self.X, self.Y, 'Spiral')
-      self.maze.connect_all(self.get_outer_style(), self.progress)
+      #self.maze = maze_lib.Maze(self.X, self.Y, 'Spiral')
+      self.maze = maze_lib.new_maze(self.outer_style.get(), self.X, self.Y, 'mono')
+      #self.maze.connect_all(self.get_outer_style(), self.progress)
+      self.maze.start_generation(self.progress)
       for i in range(self.get_outer_count()):
          self.maze.move_door()
-      if (self.outer_style.get() == "split_tree") or (self.outer_style.get() in ["split_tree_v2", "kruskal_walk"]):
+      if self.outer_style.get() in ["split_tree", "split_tree_v2", "kruskal_walk"]:
           self.button_more.config(state=Tkinter.NORMAL)
       else:
           self.maze.open_outer_walls()
 
-   def prepare_zone_maze(self, x, y):
-      self.effective_x = x * (self.X//x)
-      self.effective_y = y * (self.Y//y)
-      #print('self.X//x = %d, self.Y//y = %d' % (self.X//x, self.Y//y))
-      print('outer style = %s' % (self.outer_style.get()))
-      print('Zone maze zones (x, y) = (%d, %d)' % (x, y))
-      print('effective (x, y) = (%d, %d)' % (self.effective_x, self.effective_y))
-      print('self.X//x = %d, self.Y//y = %d' % (self.X//x, self.Y//y))
-      print('EAST door (x, y) = (%d, %d)' % (self.X-1,self.Y-1))
-      if (self.outer_style.get() != "split_tree") and (self.outer_style.get() != "split_tree_v2"):
-          self.maze = maze_lib.Zone(x, y, self.X//x, self.Y//y, False)
-          self.maze.prepare(self.get_inner_count(), self.get_inner_style(), self.get_outer_count(), self.get_outer_style())
-          self.maze.open_outer_walls()
-      else:
-          self.maze = maze_lib.Maze(self.X, self.Y, 'Spiral')
-          self.maze.split_tree(x, y, self.X//x, self.Y//y, self.get_inner_style(), maze_lib.R_WALK, self.progress)
-          self.maze.open_outer_walls()
+   #def prepare_zone_maze(self, x, y):
+   #   self.effective_x = x * (self.X//x)
+   #   self.effective_y = y * (self.Y//y)
+   #   #print('self.X//x = %d, self.Y//y = %d' % (self.X//x, self.Y//y))
+   #   print('outer style = %s' % (self.outer_style.get()))
+   #   print('Zone maze zones (x, y) = (%d, %d)' % (x, y))
+   #   print('effective (x, y) = (%d, %d)' % (self.effective_x, self.effective_y))
+   #   print('self.X//x = %d, self.Y//y = %d' % (self.X//x, self.Y//y))
+   #   print('EAST door (x, y) = (%d, %d)' % (self.X-1,self.Y-1))
+   #   if (self.outer_style.get() != "split_tree") and (self.outer_style.get() != "split_tree_v2"):
+   #       self.maze = maze_lib.Zone(x, y, self.X//x, self.Y//y, False)
+   #       self.maze.prepare(self.get_inner_count(), self.get_inner_style(), self.get_outer_count(), self.get_outer_style())
+   #       self.maze.open_outer_walls()
+   #   else:
+   #       self.maze = maze_lib.Maze(self.X, self.Y, 'Spiral')
+   #       self.maze.split_tree(x, y, self.X//x, self.Y//y, self.get_inner_style(), maze_lib.R_WALK, self.progress)
+   #       self.maze.open_outer_walls()
 
    def prepare_maze(self):
-      #description = '%s %s %d' % (self.zone_opt.get(), self.outer_style.get(), self.get_outer_count())
-      if (self.row_count.get() == '1') and (self.col_count.get() == '1'):
-         self.prepare_mono_maze()
-      else:
-         self.prepare_zone_maze(int(self.row_count.get()), int(self.col_count.get()))
+      self.prepare_mono_maze()
+      #if (self.row_count.get() == '1') and (self.col_count.get() == '1'):
+      #   self.prepare_mono_maze()
+      #else:
+      #   self.prepare_zone_maze(int(self.row_count.get()), int(self.col_count.get()))
 
    def print_window(self):
       self.area.postscript(file='maze.ps')

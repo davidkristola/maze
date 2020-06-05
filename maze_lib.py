@@ -1078,81 +1078,106 @@ class Maze(object):
          print('WARNING: no candidate walls between %s and %s' % (c1, c2))
       self.color_all(0)
 
-
 class ZigZagMaze(Maze):
-   def __init__(self, height, width, zone):
-      Maze.__init__(self, height, width, zone)
-      self.style = ZIGZAG
+    style_name = 'zigzag'
+    def __init__(self, height, width, zone):
+        Maze.__init__(self, height, width, zone)
+        self.style = ZIGZAG
+    def start_generation(self, progress = SilentProgressReporter()):
+        self.zigzag_connect_all(progress)
 
 class ZagZigMaze(Maze):
-   def __init__(self, height, width, zone):
-      Maze.__init__(self, height, width, zone)
-      self.style = ZAGZIG
+    style_name = 'zagzig'
+    def __init__(self, height, width, zone):
+        Maze.__init__(self, height, width, zone)
+        self.style = ZAGZIG
+    def start_generation(self, progress = SilentProgressReporter()):
+        self.zagzig_connect_all(progress)
 
 class SpiralMaze(Maze):
-   def __init__(self, height, width, zone):
-      Maze.__init__(self, height, width, zone)
-      self.style = SPIRAL
+    style_name = 'spiral'
+    def __init__(self, height, width, zone):
+        Maze.__init__(self, height, width, zone)
+        self.style = SPIRAL
+    def start_generation(self, progress = SilentProgressReporter()):
+        self.mono_spiral_connect_all(progress)
 
 class DoubleSpiralMaze(Maze):
-   def __init__(self, height, width, zone):
-      Maze.__init__(self, height, width, zone)
-      self.style = BI_SPI
+    style_name = 'double-spiral'
+    def __init__(self, height, width, zone):
+        Maze.__init__(self, height, width, zone)
+        self.style = BI_SPI
+    def start_generation(self, progress = SilentProgressReporter()):
+        self.bi_spiral_connect_all(progress)
 
 class RandomWalkMaze(Maze):
-   def __init__(self, height, width, zone):
-      Maze.__init__(self, height, width, zone)
-      self.style = R_WALK
+    style_name = 'walk'
+    def __init__(self, height, width, zone):
+        Maze.__init__(self, height, width, zone)
+        self.style = R_WALK
+    def start_generation(self, progress = SilentProgressReporter()):
+        self.walk_connect_all(progress)
 
 class RandomRunMaze(Maze):
-   def __init__(self, height, width, zone):
-      Maze.__init__(self, height, width, zone)
-      self.style = RANRUN
+    style_name = 'run'
+    def __init__(self, height, width, zone):
+        Maze.__init__(self, height, width, zone)
+        self.style = RANRUN
+    def start_generation(self, progress = SilentProgressReporter()):
+        self.run_connect_all(progress)
 
 class KruskalMaze(Maze):
-   def __init__(self, height, width, zone):
-      Maze.__init__(self, height, width, zone)
-      self.style = KRUSKAL
+    style_name = 'kruskal'
+    def __init__(self, height, width, zone):
+        Maze.__init__(self, height, width, zone)
+        self.style = KRUSKAL
+    def start_generation(self, progress = SilentProgressReporter()):
+        self.kruskal(progress)
 
 class WeavedKruskalMaze(Maze):
-   def __init__(self, height, width, zone):
-      Maze.__init__(self, height, width, zone)
-      self.style = EXP_2
+    style_name = 'weaved'
+    def __init__(self, height, width, zone):
+        Maze.__init__(self, height, width, zone)
+        self.style = EXP_2
+    def start_generation(self, progress = SilentProgressReporter()):
+        self.kruskal_weave(self.height*self.width//50, progress)
 
 class SplitTreeMaze(Maze):
-   def __init__(self, height, width, zone):
-      Maze.__init__(self, height, width, zone)
-      self.style = SPLIT_TREE
+    style_name = 'split_tree'
+    def __init__(self, height, width, zone):
+        Maze.__init__(self, height, width, zone)
+        self.style = SPLIT_TREE
+    def start_generation(self, progress = SilentProgressReporter()):
+         self.split_tree(5, 5, self.height//5, self.width//5, R_WALK, R_WALK, progress)
 
-def NewMaze(style, height, width, zone):
-    if style == RANDOM:
-        return NewMaze(random.randint(ZIGZAG, LAST_STYLE), height, width, zone)
-    elif style == ZIGZAG:
-        return ZigZagMaze(height, width, zone)
-    elif style == SPIRAL:
-        return SpiralMaze(height, width, zone)
-    elif style == BI_SPI:
-        return DoubleSpiralMaze(height, width, zone)
-    elif style == ZAGZIG:
-        return ZagZigMaze(height, width, zone)
-    elif style == R_WALK:
-        return RandomWalkMaze(height, width, zone)
-    elif style == RANRUN:
-        return RandomRunMaze(height, width, zone)
-    elif style == KRUSKAL:
-        return KruskalMaze(height, width, zone)
-    elif style == EXP_2:
-        return WeavedKruskalMaze(height, width, zone)
-    elif style == SPLIT_TREE:
-        return SplitTreeMaze(height, width, zone)
-    return None
+class SplitTree2Maze(Maze):
+    style_name = 'split_tree_v2'
+    def __init__(self, height, width, zone):
+        Maze.__init__(self, height, width, zone)
+        self.style = SPLIT_TREE_V2
+    def start_generation(self, progress = SilentProgressReporter()):
+        self.split_tree(self.height//5, self.width//5, 5, 5, R_WALK, R_WALK, progress)
 
+class KruskalWalkMaze(Maze):
+    style_name = 'kruskal_walk'
+    def __init__(self, height, width, zone):
+        Maze.__init__(self, height, width, zone)
+        self.style = KRUSKAL_WALK
+    def start_generation(self, progress = SilentProgressReporter()):
+        self.kruskal_with_walks(progress)
 
+def maze_style_names():
+    return [cls.style_name for cls in Maze.__subclasses__()]
 
+def new_maze(style_name, height, width, zone):
+    for cls in Maze.__subclasses__():
+        if cls.style_name == style_name:
+            return cls(height, width, zone)
+    return Maze(height, width, zone)
 
 class TestMaze(unittest.TestCase):
    def setUp(self):
-      self.maze = NewMaze(ZIGZAG, 5, 10, 'Q')
+      self.maze = new_maze('zigzag', 5, 10, 'Q')
 
    def debug_print_maze(self, the_maze):
       def d(c):
@@ -1249,7 +1274,7 @@ class TestMaze(unittest.TestCase):
       self.maze.zagzig_connect_all()
       self.check_all_connected(Coord(1, 0), (Coord(0, 9), Coord(1, 9)), (Coord(1, 0), Coord(2, 0)))
    def test_zigzag(self):
-      self.maze.zigzag_connect_all()
+      self.maze.start_generation() #zigzag_connect_all()
       self.check_all_connected(Coord(0, 1), (Coord(0, 9), Coord(1, 9)), (Coord(1, 0), Coord(2, 0)))
    def test_zagzig_connect_all(self):
       self.maze.zagzig_connect_all()
@@ -1285,14 +1310,14 @@ class TestMaze(unittest.TestCase):
       self.maze.bi_spiral_connect_all()
       self.check_all_connected(Coord(1, 0), (Coord(0, 9), Coord(1, 9)), (Coord(1, 0), Coord(2, 0)))
    def test_bi_spiral_connect_all_2(self):
-      test_maze = NewMaze(BI_SPI, 5, 11, 'P')
+      test_maze = new_maze('double-spiral', 5, 11, 'P')
       test_maze.bi_spiral_connect_all()
       test_maze.color_all(0)
       cycles = test_maze.color_from(1, Coord(0,0))
       self.assertEqual(cycles, 0)
       self.assertEqual(test_maze.get(Coord(4,10)).get_color(), 1) # all connected
    def test_bi_spiral_connect_all_3(self):
-      test_maze = NewMaze(BI_SPI, 6, 10, 'S')
+      test_maze = new_maze('double-spiral', 6, 10, 'S')
       test_maze.bi_spiral_connect_all()
       test_maze.color_all(0)
       cycles = test_maze.color_from(1, Coord(0,0))
@@ -1300,7 +1325,7 @@ class TestMaze(unittest.TestCase):
       self.assertEqual(test_maze.get(Coord(5,9)).get_color(), 1) # all connected
       #self.debug_print_maze(test_maze)
    def test_bi_spiral_connect_all_4(self):
-      test_maze = NewMaze(BI_SPI, 6, 11, 'R')
+      test_maze = new_maze('double-spiral', 6, 11, 'R')
       test_maze.bi_spiral_connect_all()
       test_maze.color_all(0)
       cycles = test_maze.color_from(1, Coord(0,0))
@@ -1308,7 +1333,7 @@ class TestMaze(unittest.TestCase):
       self.assertEqual(test_maze.get(Coord(5,10)).get_color(), 1) # all connected
       #self.debug_print_maze(test_maze)
    def test_bi_spiral_connect_all_5(self):
-      test_maze = NewMaze(BI_SPI, 3, 3, 'T')
+      test_maze = new_maze('double-spiral', 3, 3, 'T')
       test_maze.bi_spiral_connect_all()
       test_maze.color_all(0)
       cycles = test_maze.color_from(1, Coord(0,0))
@@ -1316,7 +1341,7 @@ class TestMaze(unittest.TestCase):
       self.assertEqual(test_maze.get(Coord(2,2)).get_color(), 1) # all connected
       #self.debug_print_maze(test_maze)
    def test_bi_spiral_connect_all_6(self):
-      test_maze = NewMaze(BI_SPI, 4, 4, 'A')
+      test_maze = new_maze('double-spiral', 4, 4, 'A')
       test_maze.bi_spiral_connect_all()
       test_maze.color_all(0)
       cycles = test_maze.color_from(1, Coord(0,0))
@@ -1384,7 +1409,7 @@ class TestMaze(unittest.TestCase):
 
    # DoubleSpiralMaze
    def test_path_from_to(self):
-      test_maze = NewMaze(BI_SPI, 3, 3, 'T')
+      test_maze = new_maze('double-spiral', 3, 3, 'T')
       test_maze.bi_spiral_connect_all()
       test_maze.color_all(0)
       test_maze.color_from(1, Coord(0,0))
@@ -1394,7 +1419,7 @@ class TestMaze(unittest.TestCase):
       #self.assertEqual(path, [Coord(2,2), Coord(1,2), Coord(0,2), Coord(0,1), Coord(1,1), Coord(2,1), Coord(2,0), Coord(1,0), Coord(0,0)])
       self.assertEqual(path, [Coord(0,0), Coord(1,0), Coord(2,0), Coord(2,1), Coord(1,1), Coord(0,1), Coord(0,2), Coord(1,2), Coord(2,2)])
    def test_cells_from_to(self):
-      test_maze = NewMaze(BI_SPI, 3, 3, 'T')
+      test_maze = new_maze('double-spiral', 3, 3, 'T')
       test_maze.bi_spiral_connect_all()
       test_maze.color_all(0)
       test_maze.color_from(1, Coord(0,0))
@@ -2086,14 +2111,21 @@ class BreadthFirstSearchColorTool(object):
       return 0
 
 class RefactorPlayMaze(Maze):
-   def color_from(self, color, coordinate):
-      # Keep old name until calling code can be refactored
-      return self.color_reachable_cells_and_report_cycles(color, coordinate)
+    style_name = 'refactored'
+    def __init__(self, height, width, zone):
+        Maze.__init__(self, height, width, zone)
+        self.style = ZIGZAG
+    def start_generation(self, progress = SilentProgressReporter()):
+        self.zigzag_connect_all(progress)
 
-   def color_reachable_cells_and_report_cycles(self, color, coordinate):
-      color_tool = BreadthFirstSearchColorTool(self, coordinate, color)
-      color_tool.color_graph()
-      return color_tool.get_cycle_count()
+    def color_from(self, color, coordinate):
+        # Keep old name until calling code can be refactored
+        return self.color_reachable_cells_and_report_cycles(color, coordinate)
+
+    def color_reachable_cells_and_report_cycles(self, color, coordinate):
+        color_tool = BreadthFirstSearchColorTool(self, coordinate, color)
+        color_tool.color_graph()
+        return color_tool.get_cycle_count()
 
 class TestRefactorPlayMaze(unittest.TestCase):
    def setUp(self):
