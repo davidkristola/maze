@@ -1149,6 +1149,8 @@ class SplitTreeMaze(Maze):
         self.style = SPLIT_TREE
     def start_generation(self, progress = SilentProgressReporter()):
          self.split_tree(5, 5, self.height//5, self.width//5, R_WALK, R_WALK, progress)
+    def complete_generation(self, progress = SilentProgressReporter()):
+         self.split_tree_again(progress)
 
 class SplitTree2Maze(Maze):
     style_name = 'split_tree_v2'
@@ -1157,6 +1159,8 @@ class SplitTree2Maze(Maze):
         self.style = SPLIT_TREE_V2
     def start_generation(self, progress = SilentProgressReporter()):
         self.split_tree(self.height//5, self.width//5, 5, 5, R_WALK, R_WALK, progress)
+    def complete_generation(self, progress = SilentProgressReporter()):
+         self.split_tree_again(progress)
 
 class KruskalWalkMaze(Maze):
     style_name = 'kruskal_walk'
@@ -1165,6 +1169,8 @@ class KruskalWalkMaze(Maze):
         self.style = KRUSKAL_WALK
     def start_generation(self, progress = SilentProgressReporter()):
         self.kruskal_with_walks(progress)
+    def complete_generation(self, progress = SilentProgressReporter()):
+         self.complete_kruskal_walk(progress)
 
 def maze_style_names():
     return [cls.style_name for cls in Maze.__subclasses__()]

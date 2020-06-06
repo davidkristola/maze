@@ -111,43 +111,43 @@ class MazeApp(object):
          self.area.delete(i)
       #self.area.create_text(self.HEIGHT, self.NUDGE, text=str(self.seed))
 
-   def get_outer_style(self):
-      return self.decode_style(self.outer_style.get())
+   #def get_outer_style(self):
+   #   return self.decode_style(self.outer_style.get())
 
-   def get_inner_style(self):
-      return self.decode_style(self.inner_style.get())
+   #def get_inner_style(self):
+   #   return self.decode_style(self.inner_style.get())
 
-   def decode_style(self, name):
-      if name == 'random':
-         return maze_lib.RANDOM
-      elif name == 'zigzag':
-         return maze_lib.ZIGZAG
-      elif name == 'spiral':
-         return maze_lib.SPIRAL
-      elif name == 'zagzig':
-         return maze_lib.ZAGZIG
-      elif name == 'walk':
-         return maze_lib.R_WALK
-      elif name == "run":
-          return maze_lib.RANRUN
-      elif name == "kruskal":
-          return maze_lib.KRUSKAL
-      elif name == "weaved":
-          return maze_lib.EXP_2
-      elif name == "split_tree":
-          return maze_lib.SPLIT_TREE
-      elif name == "split_tree_v2":
-          return maze_lib.SPLIT_TREE_V2
-      elif name == "kruskal_walk":
-          return maze_lib.KRUSKAL_WALK
-      else:
-         return maze_lib.BI_SPI
+   #def decode_style(self, name):
+   #   if name == 'random':
+   #      return maze_lib.RANDOM
+   #   elif name == 'zigzag':
+   #      return maze_lib.ZIGZAG
+   #   elif name == 'spiral':
+   #      return maze_lib.SPIRAL
+   #   elif name == 'zagzig':
+   #      return maze_lib.ZAGZIG
+   #   elif name == 'walk':
+   #      return maze_lib.R_WALK
+   #   elif name == "run":
+   #       return maze_lib.RANRUN
+   #   elif name == "kruskal":
+   #       return maze_lib.KRUSKAL
+   #   elif name == "weaved":
+   #       return maze_lib.EXP_2
+   #   elif name == "split_tree":
+   #       return maze_lib.SPLIT_TREE
+   #   elif name == "split_tree_v2":
+   #       return maze_lib.SPLIT_TREE_V2
+   #   elif name == "kruskal_walk":
+   #       return maze_lib.KRUSKAL_WALK
+   #   else:
+   #      return maze_lib.BI_SPI
 
    def get_outer_count(self):
       return int(self.outer_count.get())
 
-   def get_inner_count(self):
-      return int(self.inner_count.get())
+   #def get_inner_count(self):
+   #   return int(self.inner_count.get())
 
    def prepare_mono_maze(self):
       self.effective_x = self.X
@@ -220,21 +220,8 @@ class MazeApp(object):
           pass
 
    def complete_maze(self):
-       if (self.outer_style.get() in ["split_tree", "split_tree_v2"]):
-           self.complete_split_tree()
-       else:
-           self.complete_kruskal_walk()
-
-   def complete_split_tree(self):
        self.clear_canvas()
-       self.maze.split_tree_again(self.progress)
-       self.maze.open_outer_walls()
-       self.draw_maze(self.cell_size, self.NUDGE)
-       self.button_more.config(state=Tkinter.DISABLED)
-
-   def complete_kruskal_walk(self):
-       self.clear_canvas()
-       self.maze.complete_kruskal_walk(self.progress)
+       self.maze.complete_generation(self.progress)
        self.maze.open_outer_walls()
        self.draw_maze(self.cell_size, self.NUDGE)
        self.button_more.config(state=Tkinter.DISABLED)
@@ -250,7 +237,7 @@ class MazeApp(object):
    def draw_seed(self):
        info = str(self.seed) + " " + self.outer_style.get()
        self.area.create_text(170, self.HEIGHT-118, font="Times", text=info)
-       print('Seed = %d' % self.seed)
+       print('Seed = %s' % info)
 
    def draw_maze(self, cell_size, maze_shift):
       #print('%s %d %d' % (self.zone_opt.get(), self.effective_x, self.effective_y))
