@@ -21,8 +21,6 @@ class MazeApp(object):
    #Y = 80
    X = 75 # multiples of 5
    Y = 100
-   #X = 72
-   #Y = 96
    NUDGE = 15
    def __init__(self, master, seed = None):
       #self.cell_size = self.WIDTH/(self.X+2) # cell size
@@ -66,27 +64,6 @@ class MazeApp(object):
       self.outer_count_menu = Tkinter.OptionMenu(self.frame, self.outer_count, *shuffle_counts)
       self.outer_count_menu.pack(side=Tkinter.LEFT)
 
-      #self.row_count = Tkinter.StringVar(self.frame)
-      #self.row_count.set('1')
-      #self.row_count_menu = Tkinter.OptionMenu(self.frame, self.row_count, *([str(x+1) for x in range(9)]))
-      #self.row_count_menu.pack(side=Tkinter.LEFT)
-
-      #self.col_count = Tkinter.StringVar(self.frame)
-      #self.col_count.set('1')
-      #self.col_count_menu = Tkinter.OptionMenu(self.frame, self.col_count, *([str(x+1) for x in range(9)]))
-      #self.col_count_menu.pack(side=Tkinter.LEFT)
-
-
-      #self.inner_style = Tkinter.StringVar(self.frame)
-      #self.inner_style.set('zigzag')
-      #self.inner_style_menu = Tkinter.OptionMenu(self.frame, self.inner_style, *maze_styles)
-      #self.inner_style_menu.pack(side=Tkinter.LEFT)
-
-      #self.inner_count = Tkinter.StringVar(self.frame)
-      #self.inner_count.set('0')
-      #self.inner_count_menu = Tkinter.OptionMenu(self.frame, self.inner_count, *shuffle_counts)
-      #self.inner_count_menu.pack(side=Tkinter.LEFT)
-
       self.button_test = Tkinter.Button(self.frame, text='T', command=self.draw_test)
       self.button_test.pack(side=Tkinter.LEFT)
 
@@ -96,9 +73,6 @@ class MazeApp(object):
       self.button_distance = Tkinter.Button(self.frame, text='D', command=self.draw_distance)
       self.button_distance.pack(side=Tkinter.LEFT)
 
-      #self.msg_text = Tkinter.StringVar(self.frame)
-      #self.msg_text.set('information')
-      #self.msg = Tkinter.Message(self.frame, textvariable=self.msg_text, relief=Tkinter.RAISED, width=200)
       self.msg = Tkinter.Message(self.frame, text='information', relief=Tkinter.RAISED, width=200)
       self.msg.pack(side=Tkinter.RIGHT)
       self.progress = InfoProgressReporter(self.msg)
@@ -109,84 +83,22 @@ class MazeApp(object):
    def clear_canvas(self):
       for i in self.area.find_all():
          self.area.delete(i)
-      #self.area.create_text(self.HEIGHT, self.NUDGE, text=str(self.seed))
-
-   #def get_outer_style(self):
-   #   return self.decode_style(self.outer_style.get())
-
-   #def get_inner_style(self):
-   #   return self.decode_style(self.inner_style.get())
-
-   #def decode_style(self, name):
-   #   if name == 'random':
-   #      return maze_lib.RANDOM
-   #   elif name == 'zigzag':
-   #      return maze_lib.ZIGZAG
-   #   elif name == 'spiral':
-   #      return maze_lib.SPIRAL
-   #   elif name == 'zagzig':
-   #      return maze_lib.ZAGZIG
-   #   elif name == 'walk':
-   #      return maze_lib.R_WALK
-   #   elif name == "run":
-   #       return maze_lib.RANRUN
-   #   elif name == "kruskal":
-   #       return maze_lib.KRUSKAL
-   #   elif name == "weaved":
-   #       return maze_lib.EXP_2
-   #   elif name == "split_tree":
-   #       return maze_lib.SPLIT_TREE
-   #   elif name == "split_tree_v2":
-   #       return maze_lib.SPLIT_TREE_V2
-   #   elif name == "kruskal_walk":
-   #       return maze_lib.KRUSKAL_WALK
-   #   else:
-   #      return maze_lib.BI_SPI
 
    def get_outer_count(self):
       return int(self.outer_count.get())
 
-   #def get_inner_count(self):
-   #   return int(self.inner_count.get())
-
-   def prepare_mono_maze(self):
+   def prepare_maze(self):
       self.effective_x = self.X
       self.effective_y = self.Y
-      #self.maze = maze_lib.Maze(self.X, self.Y, 'Spiral')
       self.maze = maze_lib.new_maze(self.outer_style.get(), self.X, self.Y, 'mono')
-      #self.maze.connect_all(self.get_outer_style(), self.progress)
       self.maze.start_generation(self.progress)
       for i in range(self.get_outer_count()):
          self.maze.move_door()
+      #TODO: check if maze object has complete_generation method
       if self.outer_style.get() in ["split_tree", "split_tree_v2", "kruskal_walk"]:
           self.button_more.config(state=Tkinter.NORMAL)
       else:
           self.maze.open_outer_walls()
-
-   #def prepare_zone_maze(self, x, y):
-   #   self.effective_x = x * (self.X//x)
-   #   self.effective_y = y * (self.Y//y)
-   #   #print('self.X//x = %d, self.Y//y = %d' % (self.X//x, self.Y//y))
-   #   print('outer style = %s' % (self.outer_style.get()))
-   #   print('Zone maze zones (x, y) = (%d, %d)' % (x, y))
-   #   print('effective (x, y) = (%d, %d)' % (self.effective_x, self.effective_y))
-   #   print('self.X//x = %d, self.Y//y = %d' % (self.X//x, self.Y//y))
-   #   print('EAST door (x, y) = (%d, %d)' % (self.X-1,self.Y-1))
-   #   if (self.outer_style.get() != "split_tree") and (self.outer_style.get() != "split_tree_v2"):
-   #       self.maze = maze_lib.Zone(x, y, self.X//x, self.Y//y, False)
-   #       self.maze.prepare(self.get_inner_count(), self.get_inner_style(), self.get_outer_count(), self.get_outer_style())
-   #       self.maze.open_outer_walls()
-   #   else:
-   #       self.maze = maze_lib.Maze(self.X, self.Y, 'Spiral')
-   #       self.maze.split_tree(x, y, self.X//x, self.Y//y, self.get_inner_style(), maze_lib.R_WALK, self.progress)
-   #       self.maze.open_outer_walls()
-
-   def prepare_maze(self):
-      self.prepare_mono_maze()
-      #if (self.row_count.get() == '1') and (self.col_count.get() == '1'):
-      #   self.prepare_mono_maze()
-      #else:
-      #   self.prepare_zone_maze(int(self.row_count.get()), int(self.col_count.get()))
 
    def print_window(self):
       self.area.postscript(file='maze.ps')
@@ -254,14 +166,6 @@ class MazeApp(object):
        cell_size = self.cell_size
        maze_shift = self.NUDGE
        self.maze.color_all(0)
-       #path = self.maze.path_from_to(self.maze.get_first_coord(), self.maze.get_last_coord(), 1)
-       #for coord in path:
-       #    x = coord.x
-       #    y = coord.y
-       #    x1 = ((x+1) * cell_size) + maze_shift
-       #    y1 = ((y+1) * cell_size) + maze_shift
-       #    tool = CellPainterSolution(cell_size, self.area, x1, y1, self.maze.get(maze_lib.Coord(x, y)))
-       #    tool.draw_cell()
        path = self.maze.cells_from_to(self.maze.get_first_cell(), self.maze.get_last_cell(), 1)
        for cell in path:
            coord = cell.get_coord()
