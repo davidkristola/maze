@@ -1152,7 +1152,7 @@ class SplitTreeMaze(Maze):
     def complete_generation(self, progress = SilentProgressReporter()):
          self.split_tree_again(progress)
 
-class SplitTree2Maze(Maze):
+class SplitTree2Maze(SplitTreeMaze):
     style_name = 'split_tree_v2'
     def __init__(self, height, width, zone):
         Maze.__init__(self, height, width, zone)
@@ -1172,11 +1172,24 @@ class KruskalWalkMaze(Maze):
     def complete_generation(self, progress = SilentProgressReporter()):
          self.complete_kruskal_walk(progress)
 
+def children_of_maze():
+    subclasses = set()
+    unchecked = [Maze]
+    while unchecked:
+        check = unchecked.pop()
+        for child in check.__subclasses__():
+            if child not in subclasses:
+                subclasses.add(child)
+                unchecked.append(child)
+    return subclasses
+
 def maze_style_names():
-    return [cls.style_name for cls in Maze.__subclasses__()]
+    #return [cls.style_name for cls in Maze.__subclasses__()]
+    return [cls.style_name for cls in children_of_maze()]
 
 def new_maze(style_name, height, width, zone):
-    for cls in Maze.__subclasses__():
+    #for cls in Maze.__subclasses__():
+    for cls in children_of_maze():
         if cls.style_name == style_name:
             return cls(height, width, zone)
     return Maze(height, width, zone)
@@ -1469,14 +1482,15 @@ class TestMaze(unittest.TestCase):
        self.assertEqual(len(p), 4)
        self.assertEqual(p[2], Coord(1,1)) # no matter what the ssecond cell is, the third is this one
        self.assertEqual(p[1], test_maze.get(Coord(1,1)).get_prev())
+
    def test_has_junction(self):
-       test_maze = Maze(100, 100, 'T')
+       test_maze = SplitTree2Maze(100, 100, 'T')
        test_maze.color_all(0)
        test_maze.build_path([Coord(5,5), Coord(5,6), Coord(5,7), Coord(4,7), Coord(4,8), Coord(5,8), Coord(6,8), Coord(6,7)], 2)
        self.assertTrue(test_maze.has_junction(Coord(5,6)))
        self.assertFalse(test_maze.has_junction(Coord(5,7)))
    def test_junction_nearest_middle_1(self):
-       test_maze = Maze(100, 100, 'T')
+       test_maze = SplitTree2Maze(100, 100, 'T')
        test_maze.color_all(0)
        p = [Coord(x,10) for x in range(5,15)]
        test_maze.build_from_to(p[0], p[-1], 5)
@@ -1492,7 +1506,7 @@ class TestMaze(unittest.TestCase):
        for l in p[1:-2]:
            self.assertFalse(test_maze.has_junction(l))
    def test_junction_nearest_middle_2(self):
-       test_maze = Maze(10, 10, 'T')
+       test_maze = SplitTree2Maze(10, 10, 'T')
        test_maze.color_all(0)
        p = [Coord(5,5), Coord(5,6), Coord(5,7), Coord(4,7), Coord(4,8), Coord(5,8), Coord(6,8), Coord(6,7)]
        test_maze.build_path(p, 2)
@@ -1505,7 +1519,7 @@ class TestMaze(unittest.TestCase):
        self.assertEqual(None, test_maze.junction_nearest_middle([Coord(5,7)]))
        self.assertEqual(None, test_maze.junction_nearest_middle([]))
    def test_tunnel_under_existing_path(self):
-       test_maze = Maze(3, 3, 'U')
+       test_maze = WeavedKruskalMaze(3, 3, 'U')
        test_maze.set_up_unlinked_kruskal()
        test_maze.add_door(Coord(1,1), EAST)
        test_maze.add_door(Coord(1,1), WEST)
@@ -1515,7 +1529,7 @@ class TestMaze(unittest.TestCase):
        test_maze.color_from(5, Coord(1,1).step(NORTH))
        self.assertEqual(test_maze.get(Coord(1,1).step(SOUTH)).get_color(), 5)
    def test_kruskal_weave_over_under_cross(self):
-       test_maze = Maze(3, 3, 'U')
+       test_maze = WeavedKruskalMaze(3, 3, 'U')
        test_maze.set_up_unlinked_kruskal()
        center = Coord(1,1)
        test_maze.kruskal_weave_over_under_cross(center)
@@ -1533,7 +1547,7 @@ class TestMaze(unittest.TestCase):
        self.assertNotEqual(kset(NORTH), kset(WEST))
    def test_kruskal_weave_color(self):
        # has_under_cell
-       test_maze = Maze(3, 3, 'U')
+       test_maze = WeavedKruskalMaze(3, 3, 'U')
        test_maze.set_up_unlinked_kruskal()
        test_maze.color_all(13)
        center = Coord(1,1)
@@ -1555,7 +1569,7 @@ class TestMaze(unittest.TestCase):
        self.assertEqual(cycles, 0)
        self.assertEqual(test_maze.get(Coord(1,1)).get_color(), 5)
    def test_color_from_kruskal(self):
-       test_maze = Maze(3, 3, 'T')
+       test_maze = WeavedKruskalMaze(3, 3, 'T')
        test_maze.set_up_unlinked_kruskal()
        test_maze.kruskal_weave_over_under_cross(Coord(1,1))
        test_maze.kruskal_join(test_maze.get(Coord(0,0)),SOUTH,test_maze.get(Coord(1,0)))
@@ -1569,7 +1583,7 @@ class TestMaze(unittest.TestCase):
        self.debug_print_under_maze(test_maze)
        self.debug_print_maze_colors(test_maze)
    def test_kruskal_weave(self):
-       test_maze = Maze(20, 20, 'K')
+       test_maze = WeavedKruskalMaze(20, 20, 'K')
        #test_maze.debug = True
        test_maze.kruskal_weave(5)
 #       self.debug_print_maze(test_maze)
@@ -1580,7 +1594,7 @@ class TestMaze(unittest.TestCase):
        self.assertEqual(cycles, 0) ####################################################### this sometimes fails!!!!!!!!!!!!!!!!!!!!!!
        self.assertEqual(test_maze.get(Coord(4,10)).get_color(), 1) # all connected
    def test_kruskal_exclusion(self):
-       test_maze = Maze(5, 5, 'T')
+       test_maze = WeavedKruskalMaze(5, 5, 'T')
        test_maze.set_up_unlinked_kruskal()
        test_maze.kruskal_weave_over_under_cross(Coord(2,2))
        for x1 in range(5):
@@ -1591,7 +1605,7 @@ class TestMaze(unittest.TestCase):
                    print('kruskal_weave_over_under_cross %s' % (c1))
                self.assertFalse(answer)
    def test_kruskal_cycle_cw(self):
-       test_maze = Maze(5, 5, 'T')
+       test_maze = WeavedKruskalMaze(5, 5, 'T')
        test_maze.set_up_unlinked_kruskal()
        test_maze.kruskal_weave_over_under_cross(Coord(2,2))
        # can_kruskal_join
@@ -1734,7 +1748,7 @@ class DirectionVector(object):
         self.p1 = p1
         self.delta_x = p1.x - p0.x
         self.delta_y = p1.y - p0.y
-    def perp(self):
+    def perpendicular(self):
         new_vector = DirectionVector(self.p0, self.p1)
         new_vector.delta_x = -self.delta_y
         new_vector.delta_y = self.delta_x
@@ -1742,12 +1756,12 @@ class DirectionVector(object):
     def dot(self, other):
         return (self.delta_x * other.delta_x) + (self.delta_y * other.delta_y)
     def are_parallel(self, other):
-        return other.dot(self.perp()) == 0
+        return other.dot(self.perpendicular()) == 0
 
 class TestDirectionVector(unittest.TestCase):
-    def test_perp(self):
+    def test_perpendicular(self):
         dv1 = DirectionVector(Point(1,1), Point(2,2))
-        dv2 = dv1.perp()
+        dv2 = dv1.perpendicular()
         self.assertEqual(dv2.delta_x, -1)
         self.assertEqual(dv2.delta_y, 1)
     def test_are_parallel_1(self):
@@ -1772,28 +1786,28 @@ class Line(object):
         return self.p1
     def get_p2(self):
         return self.p2
-    def slope(self):
-        return self.m
-    def intercept(self):
-        return self.b
-    def _slope(self):
-        return float(self.p2.y - self.p1.y)/float(self.p2.x - self.p1.x)
-    def _intercept(self):
-        return self.p2.y - (self.p2.x * self._slope())
-    def project_x(self, x):
-        return (self.m * x) + self.b
-    def project_y(self, y):
-        return (y - self.b) / self.m
-    def in_x_segment(self, x):
-        if self.p1.x < self.p2.x:
-            return (self.p1.x <= x) and (x <= self.p2.x)
-        else:
-            return (self.p2.x <= x) and (x <= self.p1.x)
-    def in_y_segment(self, y):
-        if self.p1.y < self.p2.y:
-            return (self.p1.y <= y) and (y <= self.p2.y)
-        else:
-            return (self.p2.y <= y) and (y <= self.p1.y)
+    #def slope(self):
+    #    return self.m
+    #def intercept(self):
+    #    return self.b
+    #def _slope(self):
+    #    return float(self.p2.y - self.p1.y)/float(self.p2.x - self.p1.x)
+    #def _intercept(self):
+    #    return self.p2.y - (self.p2.x * self._slope())
+    #def project_x(self, x):
+    #    return (self.m * x) + self.b
+    #def project_y(self, y):
+    #    return (y - self.b) / self.m
+    #def in_x_segment(self, x):
+    #    if self.p1.x < self.p2.x:
+    #        return (self.p1.x <= x) and (x <= self.p2.x)
+    #    else:
+    #        return (self.p2.x <= x) and (x <= self.p1.x)
+    #def in_y_segment(self, y):
+    #    if self.p1.y < self.p2.y:
+    #        return (self.p1.y <= y) and (y <= self.p2.y)
+    #    else:
+    #        return (self.p2.y <= y) and (y <= self.p1.y)
     def parallel(self, other):
         return self.dv.are_parallel(other.dv)
     def coincide(self, other): # invalid if not parallel

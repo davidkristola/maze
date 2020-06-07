@@ -87,29 +87,6 @@ class MazeApp(object):
    def get_outer_count(self):
       return int(self.outer_count.get())
 
-   def prepare_maze(self):
-      self.effective_x = self.X
-      self.effective_y = self.Y
-      self.maze = maze_lib.new_maze(self.outer_style.get(), self.X, self.Y, 'mono')
-      self.maze.start_generation(self.progress)
-      for i in range(self.get_outer_count()):
-         self.maze.move_door()
-      #TODO: check if maze object has complete_generation method
-      if self.outer_style.get() in ["split_tree", "split_tree_v2", "kruskal_walk"]:
-          self.button_more.config(state=Tkinter.NORMAL)
-      else:
-          self.maze.open_outer_walls()
-
-   def print_window(self):
-      self.area.postscript(file='maze.ps')
-
-   def draw_next_maze(self):
-      self.button_more.config(state=Tkinter.DISABLED)
-      self.set_seed()
-      self.clear_canvas()
-      self.prepare_maze()
-      self.draw_maze(self.cell_size, self.NUDGE)
-
    def set_seed(self):
       seed = self.next_seed
       # now get ready for the next maze
@@ -124,12 +101,18 @@ class MazeApp(object):
          self.seed = seed
          random.seed(seed)
 
-   def redraw_maze(self):
-      self.clear_canvas()
-      try:
-          self.draw_maze(self.cell_size, self.NUDGE)
-      except:
-          pass
+   def prepare_maze(self):
+      self.effective_x = self.X
+      self.effective_y = self.Y
+      self.maze = maze_lib.new_maze(self.outer_style.get(), self.X, self.Y, 'mono')
+      self.maze.start_generation(self.progress)
+      for i in range(self.get_outer_count()):
+         self.maze.move_door()
+      #TODO: check if maze object has complete_generation method
+      if self.outer_style.get() in ["split_tree", "split_tree_v2", "kruskal_walk"]:
+          self.button_more.config(state=Tkinter.NORMAL)
+      else:
+          self.maze.open_outer_walls()
 
    def complete_maze(self):
        self.clear_canvas()
@@ -137,6 +120,23 @@ class MazeApp(object):
        self.maze.open_outer_walls()
        self.draw_maze(self.cell_size, self.NUDGE)
        self.button_more.config(state=Tkinter.DISABLED)
+
+   def print_window(self):
+      self.area.postscript(file='maze.ps')
+
+   def draw_next_maze(self):
+      self.button_more.config(state=Tkinter.DISABLED)
+      self.set_seed()
+      self.clear_canvas()
+      self.prepare_maze()
+      self.draw_maze(self.cell_size, self.NUDGE)
+
+   def redraw_maze(self):
+      self.clear_canvas()
+      try:
+          self.draw_maze(self.cell_size, self.NUDGE)
+      except:
+          pass
 
    def draw_test(self):
        self.clear_canvas()
