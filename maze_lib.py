@@ -197,6 +197,8 @@ class Cell(object):
             if d is not None:
                 c += 1
         return c
+    def is_unlinked(self):
+        return self.get_door_count() == 0
     def add_door(self, direction, door):
         if door is not None:
             _ = door.get_direction() # will throw an exception of door isn't a Door
@@ -928,23 +930,23 @@ class Maze(object):
        return path_taken
 
    # This is not Weaved Kruskal... is it dead code?
-   def exp_2(self):
-       path_maker = PathMaker(self.height, self.width, 8)
-       #path_maker.make_unordered_point_list()
-       #path = path_maker.a_non_crossing_path()
-       path = path_maker.new_path(8)
-       self.color_all(1)
-       color = 5
-       if path is None:
-           self.build_from_to(Coord(self.height-1,self.width-1), Coord(0,0), color)
-       else:
-           for line in path:
-               p1 = Coord(int(line.get_p1().x), int(line.get_p1().y))
-               p2 = Coord(int(line.get_p2().x), int(line.get_p2().y))
-               try:
-                   self.build_from_to(p1, p2, color)
-               except:
-                   pass
+   #def exp_2(self):
+   #    path_maker = PathMaker(self.height, self.width, 8)
+   #    #path_maker.make_random_point_list()
+   #    #path = path_maker.a_non_crossing_path()
+   #    path = path_maker.new_path(8)
+   #    self.color_all(1)
+   #    color = 5
+   #    if path is None:
+   #        self.build_from_to(Coord(self.height-1,self.width-1), Coord(0,0), color)
+   #    else:
+   #        for line in path:
+   #            p1 = Coord(int(line.get_p1().x), int(line.get_p1().y))
+   #            p2 = Coord(int(line.get_p2().x), int(line.get_p2().y))
+   #            try:
+   #                self.build_from_to(p1, p2, color)
+   #            except:
+   #                pass
 
    def split_tree(self, grid_x, grid_y, sub_x, sub_y, outer_style, inner_style, progress_reporter = None):
        path_maker = PathMaker2(grid_x, grid_y, sub_x, sub_y)
@@ -1162,6 +1164,63 @@ class SplitTree2Maze(SplitTreeMaze):
     def complete_generation(self, progress = SilentProgressReporter()):
          self.split_tree_again(progress)
 
+class SplitTree3Maze(SplitTreeMaze):
+    style_name = 'split_tree_v3'
+    def start_generation(self, progress = SilentProgressReporter()):
+        number_of_points = 8
+        path_maker = PathMaker(self.height, self.width, number_of_points)
+        line_list = path_maker.get_line_list()
+        path_color = 7
+        path = self.build_path_from_line_list(line_list, path_color)
+        self.path_queue = PathQueue(self.height*self.width)
+        self.path_queue.add(path)
+    def complete_generation(self, progress = SilentProgressReporter()):
+         self.split_tree_again(progress)
+
+    def build_path_from_line_list(self, line_list):
+        point_path = []
+        # magic happens here
+        return point_path
+    def shortest_non_crossing_path(self, start_cell, stop_cell):
+        pass
+        '''BFS'''
+        x = start_cell
+        visited = set()
+        visited.add(x.get_id())
+        x.set_prev(None)
+        x.set_distance(0)
+        neighbors = self.get_unlinked_adjacents(x)
+        for n in neighbors:
+            n.set_prev(x)
+        explore = neighbors
+        while len(explore) != 0:
+            x = explore[0]
+            del(explore[0])
+            visited.add(x.get_id())
+            neighbors = [y for y in self.get_unlinked_adjacents(x) if y.get_id() not in visited]
+            d = x.get_distance() + 1
+            for n in neighbors:
+                n.set_prev(x)
+                n.set_distance(d)
+            explore += neighbors
+        path = [stop_cell]
+        c = stop_cell
+        while c != start_cell:
+            c = c.get_prev()
+            path += [c]
+        path.reverse()
+        return path
+    def get_unlinked_adjacents(self, cell):
+        adjacents = []
+        coord = cell.get_coord()
+        for d in range(4):
+            step = coord.step(d)
+            if self.is_valid_coord(step):
+                check_cell = self.get(step)
+                if check_cell.is_unlinked():
+                    adjacents.append(check_cell)
+        return adjacents
+
 class KruskalWalkMaze(Maze):
     style_name = 'kruskal_walk'
     def __init__(self, height, width, zone):
@@ -1173,13 +1232,13 @@ class KruskalWalkMaze(Maze):
          self.complete_kruskal_walk(progress)
 
 def children_of_maze():
-    subclasses = set()
+    subclasses = []
     unchecked = [Maze]
     while unchecked:
         check = unchecked.pop()
         for child in check.__subclasses__():
             if child not in subclasses:
-                subclasses.add(child)
+                subclasses.append(child)
                 unchecked.append(child)
     return subclasses
 
@@ -1466,6 +1525,58 @@ class TestMaze(unittest.TestCase):
        test_maze.build_from_to(Coord(2,2), Coord(0,0), color)
        #self.debug_print_maze(test_maze)
        self.assertEqual(test_maze.get(Coord(2,0)).get_color(), 5)
+   def test_build_from_to2(self):
+       test_maze = Maze(10, 10, 'T')
+       test_maze.color_all(1)
+       test_maze.build_from_to(Coord(2,2), Coord(3,8), 2)
+       self.assertEqual(test_maze.get(Coord(2,2)).get_color(), 2)
+       self.assertEqual(test_maze.get(Coord(2,3)).get_color(), 2)
+       self.assertEqual(test_maze.get(Coord(2,4)).get_color(), 2)
+       self.assertEqual(test_maze.get(Coord(2,5)).get_color(), 2)
+       self.assertEqual(test_maze.get(Coord(2,6)).get_color(), 2)
+       self.assertEqual(test_maze.get(Coord(2,7)).get_color(), 2)
+       self.assertEqual(test_maze.get(Coord(2,3)).get_color(), 2)
+       self.assertEqual(test_maze.get(Coord(3,8)).get_color(), 2)
+       d = test_maze.pick_direction_from_to(Coord(2,2), Coord(2,3))[0]
+       self.assertTrue(test_maze.get(Coord(2,2)).has_door(d))
+       self.assertTrue(test_maze.get(Coord(2,3)).has_door(d))
+       self.assertTrue(test_maze.get(Coord(2,4)).has_door(d))
+       self.assertTrue(test_maze.get(Coord(2,5)).has_door(d))
+       self.assertTrue(test_maze.get(Coord(2,6)).has_door(d))
+       self.assertTrue(test_maze.get(Coord(2,7)).has_door(d))
+       d = test_maze.pick_direction_from_to(Coord(2,8), Coord(3,8))[0]
+       self.assertTrue(test_maze.get(Coord(2,8)).has_door(d))
+   def test_build_from_to3(self):
+       test_maze = Maze(10, 10, 'T')
+       test_maze.color_all(1)
+       test_maze.build_from_to(Coord(2,2), Coord(8,8), 2)
+       self.assertEqual(test_maze.get(Coord(2,2)).get_color(), 2)
+       self.assertEqual(test_maze.get(Coord(2,3)).get_color(), 2)
+       self.assertEqual(test_maze.get(Coord(3,3)).get_color(), 2)
+       self.assertEqual(test_maze.get(Coord(3,4)).get_color(), 2)
+       self.assertEqual(test_maze.get(Coord(4,4)).get_color(), 2)
+       self.assertEqual(test_maze.get(Coord(4,5)).get_color(), 2)
+       self.assertEqual(test_maze.get(Coord(5,5)).get_color(), 2)
+       self.assertEqual(test_maze.get(Coord(5,6)).get_color(), 2)
+       self.assertEqual(test_maze.get(Coord(6,6)).get_color(), 2)
+       self.assertEqual(test_maze.get(Coord(6,7)).get_color(), 2)
+       self.assertEqual(test_maze.get(Coord(7,7)).get_color(), 2)
+       self.assertEqual(test_maze.get(Coord(7,8)).get_color(), 2)
+       self.assertEqual(test_maze.get(Coord(8,8)).get_color(), 2)
+       d1 = test_maze.pick_direction_from_to(Coord(2,2), Coord(2,3))[0]
+       d2 = test_maze.pick_direction_from_to(Coord(2,3), Coord(3,3))[0]
+       self.assertTrue(test_maze.get(Coord(2,2)).has_door(d1))
+       self.assertTrue(test_maze.get(Coord(2,3)).has_door(d2))
+       self.assertTrue(test_maze.get(Coord(3,3)).has_door(d1))
+       self.assertTrue(test_maze.get(Coord(3,4)).has_door(d2))
+       self.assertTrue(test_maze.get(Coord(4,4)).has_door(d1))
+       self.assertTrue(test_maze.get(Coord(4,5)).has_door(d2))
+       self.assertTrue(test_maze.get(Coord(5,5)).has_door(d1))
+       self.assertTrue(test_maze.get(Coord(5,6)).has_door(d2))
+       self.assertTrue(test_maze.get(Coord(6,6)).has_door(d1))
+       self.assertTrue(test_maze.get(Coord(6,7)).has_door(d2))
+       self.assertTrue(test_maze.get(Coord(7,7)).has_door(d1))
+       self.assertTrue(test_maze.get(Coord(7,8)).has_door(d2))
 
    def test_random_walk(self):
        test_maze = Maze(100, 100, 'T')
@@ -1778,6 +1889,10 @@ class Line(object):
         self.p1 = p1
         self.p2 = p2
         self.dv = DirectionVector(p1, p2)
+    def __eq__(self, other):
+        return (self.p1 == other.p1) and (self.p2 == other.p2)
+    def __ne__(self, other):
+        return not self.__eq__(other)
     def __str__(self):
         return 'Line{%s->%s}' % (self.p1, self.p2)
     def __repr__(self):
@@ -1838,36 +1953,58 @@ class TestLine(unittest.TestCase):
         self.assertFalse(l1.coincide(l2))
         self.assertTrue(l1.parallel(l3))
         self.assertTrue(l1.coincide(l3))
+    def test_equal(self):
+        l1 = Line(Point(0,0), Point(4,2))
+        self.assertEqual(l1, l1)
+    def test_not_equal(self):
+        l2 = Line(Point(0,1), Point(4,3))
+        l3 = Line(Point(8,4), Point(12,6))
+        self.assertNotEqual(l2,l3)
 
 class PathMaker(object):
     def __init__(self, span_x, span_y, inner_point_count):
         self.span_x = span_x
         self.span_y = span_y
         self.inner_point_count = inner_point_count
-    def make_unordered_point_list(self):
-        point_list = [Point(0,0)]
+        self.elligable_points = self._all_inner_points()
+        random.shuffle(self.elligable_points)
+    def _first_point(self):
+        return Point(0,0)
+    def _last_point(self):
+        return Point(self.span_x-1, self.span_y-1)
+    def _random_point(self):
+        # return a random point that is not on the extreme
+        #x = random.randint(1, self.span_x-2)
+        #y = random.randint(1, self.span_y-2)
+        #return Point(x,y)
+        if len(self.elligable_points) == 0:
+            return None
+        p = self.elligable_points[0]
+        del(self.elligable_points[0])
+        return p
+    def _make_random_point_list(self):
+        point_list = [self._first_point()]
         self.inner_points = []
         for p in range(self.inner_point_count):
-            x = random.randint(0, self.span_x-1)
-            y = random.randint(0, self.span_y-1)
-            point_list += [Point(x,y)]
-            self.inner_points += [Point(x,y)]
-        point_list += [Point(self.span_x-1, self.span_y-1)]
+            point = self._random_point()
+            point_list += [point]
+            self.inner_points += [point]
+        point_list += [self._last_point()]
         self.point_list = point_list
         return point_list
+    def _point_list_to_line_list(self, point_list=None):
+        if point_list is None:
+            point_list = self.point_list
+        ll = []
+        for i in range(len(point_list)-1):
+            ll.append(Line(point_list[i], point_list[i+1]))
+        self.line_list = ll
+        return ll
     def cross(self, line_1, line_2):
         try:
             return line_1.intersect(line_2)
         except:
             return line_2.intersect(line_1)
-    def point_list_to_line_list(self, point_list=None):
-        if point_list is None:
-            point_list = self.point_list
-        ll = []
-        for i in range(len(point_list)-1):
-            ll.append(Line(point_list[1], point_list[i+1]))
-        self.line_list = ll
-        return ll
     def has_cross(self, ll=None):
         if ll is None:
             ll = self.line_list
@@ -1877,68 +2014,48 @@ class PathMaker(object):
                     #print('l1 %s crosses l2 %s' % (str(l1), str(l2)))
                     return True
         return False
-    def a_non_crossing_path(self):
-        for option in itertools.permutations(self.inner_points, len(self.inner_points)):
-            ll = self.augmented_line(option)
-            if not self.has_cross(ll):
-                return ll
-        return None
-    def augmented_line(self, inner_point_list):
-        ll = [Line(Point(0,0), inner_point_list[0])]
-        for pi in range(len(inner_point_list)-1):
-            p1 = inner_point_list[pi]
-            p2 = inner_point_list[pi+1]
-            ll += [Line(p1, p2)]
-        ll += [Line(inner_point_list[-1], Point(self.span_x-1, self.span_y-1))]
-        return ll
-    def first_point(self):
-        return Point(0,0)
-    def last_point(self):
-        return Point(self.span_x-1, self.span_y-1)
-    def random_point(self):
-        x = random.randint(0, self.span_x-1)
-        y = random.randint(0, self.span_y-1)
-        return Point(x,y)
-    def random_point_near(self, point):
-        DELTA = 10
-        print('random_point_near x range: %d .. %d' % (max(0, int(point.get_x())-DELTA), min(self.span_x-1, int(point.get_x())+DELTA)))
-        x = random.randint(max(0, int(point.get_x())-DELTA), min(self.span_x-1, int(point.get_x())+DELTA))
-        print('random_point_near y range: %d .. %d' % (max(0, int(point.get_y())-DELTA), min(self.span_y-1, int(point.get_y())+DELTA)))
-        y = random.randint(max(0, int(point.get_y())-DELTA), min(self.span_y-1, int(point.get_y())+DELTA))
-        print('random_point_near x: %d -> %d, y: %d -> %d' % (int(point.get_x()), x, int(point.get_y()), y))
-        return Point(x,y)
     def crosses(self, line_list, candidate):
         for line in line_list:
             if self.cross(line, candidate):
                 return True
         return False
-    def new_path(self, inner_point_count=None):
-        if inner_point_count is None:
-            inner_point_count = self.inner_point_count
-        working_from = [self.first_point(), self.last_point()]
-        lines = []
-        for x in range(inner_point_count):
-            working = working_from[0]
-            del working_from[0]
-            next_point = self.random_point_near(working)
-            next_line = Line(working, next_point)
-            while self.crosses(lines, next_line):
-                next_point = self.random_point_near(working)
-                next_line = Line(working, next_point)
-            lines += [next_line]
-            print('Adding line %s' % (str(next_line)))
-            working_from += [next_point]
-        last_line = Line(working_from[0], working_from[1])
-        print('Last line %s (%s)' % (str(last_line), 'crosses!' if self.crosses(lines, last_line) else 'not crossing'))
-        lines += [last_line]
-        # does this cross?
-        return lines
+    def _all_inner_points(self):
+        inner_points = []
+        for x in range(self.span_x-2):
+            for y in range(self.span_y-2):
+                inner_points.append(Point(x+1,y+1))
+        return inner_points
+    def get_line_list(self):
+        return self._point_list_to_line_list(self._make_random_point_list())
 
 class TestPathMaker(unittest.TestCase):
     def setUp(self):
         self.path_maker = PathMaker(10, 20, 4)
-    def test_make_unordered_point_list(self):
-        path = self.path_maker.make_unordered_point_list()
+    def test_all_inner_points_1(self):
+        pm = PathMaker(3, 3, 1)
+        ip = pm._all_inner_points()
+        self.assertEqual([Point(1,1)], ip)
+    def test_all_inner_points_2(self):
+        pm = PathMaker(3, 4, 1)
+        ip = pm._all_inner_points()
+        self.assertEqual([Point(1,1),Point(1,2)], ip)
+    def test_all_inner_points_3(self):
+        pm = PathMaker(4, 3, 1)
+        ip = pm._all_inner_points()
+        self.assertEqual([Point(1,1),Point(2,1)], ip)
+    def test_all_inner_points_4(self):
+        pm = PathMaker(4, 4, 1)
+        ip = pm._all_inner_points()
+        self.assertEqual([Point(1,1),Point(1,2),Point(2,1),Point(2,2)], ip)
+    def test_random_point(self):
+        pm = PathMaker(3, 3, 1)
+        # in a 3x3, there is only one elligable point
+        ip = pm._random_point()
+        self.assertEqual(Point(1,1), ip)
+        ip = pm._random_point()
+        self.assertEqual(None, ip)
+    def test_make_random_point_list(self):
+        path = self.path_maker._make_random_point_list()
         self.assertEqual(len(path), 6)
     def test_cross_1(self):
         l_1 = Line(Point(1,1), Point(9,9))
@@ -1948,28 +2065,16 @@ class TestPathMaker(unittest.TestCase):
         l_1 = Line(Point(1,1), Point(2,2))
         l_2 = Line(Point(3,3), Point(4,4))
         self.assertFalse(self.path_maker.cross(l_1, l_2))
-    def test_line_list(self):
-        path = self.path_maker.make_unordered_point_list()
-        ll = self.path_maker.point_list_to_line_list(path)
-        self.assertEqual(len(ll), 5)
-        #if self.path_maker.has_cross(ll):
-        #    print('has_cross')
-    def test_line_list2(self):
-        path_maker = PathMaker(10, 20, 2)
-        path = path_maker.make_unordered_point_list()
-        ll = path_maker.point_list_to_line_list(path)
+    def test_point_list_to_line_list(self):
+        point_list = [Point(1,1), Point(2,2), Point(3,3), Point(4,4)]
+        ll = self.path_maker._point_list_to_line_list(point_list)
         self.assertEqual(len(ll), 3)
-        #if self.path_maker.has_cross(ll):
-        #    print('has_cross')
-    def test_augmented_line(self):
-        inner = [Point(2,2), Point(4,4), Point(8,8)]
-        answer = self.path_maker.augmented_line(inner)
-        #print(str(answer))
-        self.assertFalse( self.path_maker.has_cross(answer) )
-    def test_a_non_crossing_path(self):
-        self.path_maker.make_unordered_point_list()
-        foo = self.path_maker.a_non_crossing_path()
-        #print(str(foo))
+        self.assertEqual(Line(Point(1,1), Point(2,2)), ll[0])
+        self.assertEqual(Line(Point(2,2), Point(3,3)), ll[1])
+        self.assertEqual(Line(Point(3,3), Point(4,4)), ll[2])
+    def test_get_line_list(self):
+        path = self.path_maker.get_line_list()
+        self.assertEqual(5, len(path))
 
 class PathMaker2(object):
     COLOR = 7
@@ -2176,4 +2281,32 @@ class TestRefactorPlayMaze(unittest.TestCase):
       self.maze.remove_door(c, d)
       self.maze.color_from(8, Coord(0,0))
       self.assertEqual(self.maze.get(Coord(4,9)).get_color(), 0)
+
+class TestSplitTree3Maze(unittest.TestCase):
+    def test_build_path_from_line_list(self):
+        self.assertEqual(Coord(1,2), Point(1,2))
+    def test_shortest_non_crossing_path(self):
+        m = SplitTree3Maze(10, 10, 'v3')
+        path = m.shortest_non_crossing_path(m.get(Coord(2,2)), m.get(Coord(4,7)))
+        self.assertEqual(8, len(path))
+        #TODO: need additional checks to make sure this simple path is good
+        #TODO: need additional checks to see about obstical avoidance
+    def test_get_unlinked_adjacents(self):
+        m = SplitTree3Maze(10, 10, 'v3')
+        corner = m.get_unlinked_adjacents(m.get_first_cell())
+        self.assertEqual(2, len(corner))
+        ids = [c.get_id() for c in corner]
+        self.assertTrue(m.get(Coord(0,1)).get_id() in ids)
+        self.assertTrue(m.get(Coord(1,0)).get_id() in ids)
+    def test_get_unlinked_adjacents2(self):
+        m = SplitTree3Maze(10, 10, 'v3')
+        center = m.get_unlinked_adjacents(m.get(Coord(5,5)))
+        self.assertEqual(4, len(center))
+        ids = [c.get_id() for c in center]
+        self.assertTrue(m.get(Coord(4,5)).get_id() in ids)
+        self.assertTrue(m.get(Coord(6,5)).get_id() in ids)
+        self.assertTrue(m.get(Coord(5,4)).get_id() in ids)
+        self.assertTrue(m.get(Coord(5,6)).get_id() in ids)
+
+
 
