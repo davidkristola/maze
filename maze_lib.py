@@ -1911,6 +1911,8 @@ class Line(object):
         self.dv = DirectionVector(p1, p2)
         self.debug = False
     def __eq__(self, other):
+        if type(self) is not type((other)):
+            return False
         return (self.p1 == other.p1) and (self.p2 == other.p2)
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -2049,6 +2051,48 @@ class TestCross(unittest.TestCase):
         cross1 = Cross(Coord(5,5))
         cross2 = Cross(Coord(7,7))
         self.assertFalse(cross1.intersect(cross2))
+
+class LineLikeCollection(object):
+    def __init__(self, line_list):
+        self.line_list = line_list
+    def crossing(self):
+        '''return the two crossing line-like items, or None,None'''
+        for i in range(len(self.line_list)):
+            for j in range(i,len(self.line_list)):
+                a = self.line_list[i]
+                b = self.line_list[j]
+                if a.intersect(b):
+                    # found an intersecting pair!
+                    del self.line_list[j]
+                    del self.line_list[i]
+                    return (a,b)
+        return (None,None)
+    def count(self):
+        return len(self.line_list)
+
+class TestLineLikeCollection(unittest.TestCase):
+    def line(self, x1,y1,x2,y2):
+        return Line(Point(x1,y1),Point(x2,y2))
+    def test_crossing_yes(self):
+        l1 = self.line(1,1,1,5)
+        l2 = self.line(2,5,9,5)
+        l3 = self.line(2,2,8,8)
+        llc = LineLikeCollection([l1, l2, l3])
+        self.assertEqual(3, llc.count())
+        a, b = llc.crossing()
+        self.assertEqual(a, l2)
+        self.assertEqual(b, l3)
+        self.assertEqual(1, llc.count())
+    def test_crossing_no(self):
+        l1 = self.line(1,1,1,5)
+        l2 = self.line(2,5,9,5)
+        l3 = self.line(9,4,3,1)
+        llc = LineLikeCollection([l1, l2, l3])
+        self.assertEqual(3, llc.count())
+        a, b = llc.crossing()
+        self.assertEqual(a, None)
+        self.assertEqual(b, None)
+        self.assertEqual(3, llc.count())
 
 class PathMaker(object):
     def __init__(self, span_x, span_y, inner_point_count):
