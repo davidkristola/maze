@@ -44,6 +44,10 @@ class Coord(object):
         return '(%d,%d)' % (self.x, self.y)
     def __repr__(self):
         return str(self)
+    def get_x(self):
+        return self.x
+    def get_y(self):
+        return self.y
     def direction_to_other(self, other):
         dx = other.x - self.x
         dy = other.y - self.y
@@ -1180,9 +1184,17 @@ class SplitTree3Maze(SplitTreeMaze):
     def build_path_from_line_list(self, line_list):
         point_path = []
         # magic happens here
+        # while there is a crossing pair:
+        #     find cross point
+        #     add cross
+        #     add 4 lines back to the list
+        #        l1P1->crossOverV1, crossOverV2->l1pP2,
+        #        L2P1->crossUnderV1, crossUnderV2->L2P2
+        # convert all line-like objects to paths using shortest_non_crossing_path
+        # stitch paths together (build in maze)
+        # extract point_path from start to finish (for use in split-tree algo)
         return point_path
     def shortest_non_crossing_path(self, start_cell, stop_cell):
-        pass
         '''BFS'''
         x = start_cell
         visited = set()
@@ -1852,6 +1864,12 @@ class Point(object):
         return (self.x == other.x) and (self.y == other.y)
     def __ne__(self, other):
         return not self.__eq__(other)
+    def coord(self):
+        return Coord(int(self.x),int(self.y))
+
+class TestPoint(unittest.TestCase):
+    def test_coord(self):
+        self.assertEqual(Coord(3,4), Point(3.001,4.001).coord())
 
 class DirectionVector(object):
     def __init__(self, p0, p1):
@@ -1868,6 +1886,8 @@ class DirectionVector(object):
         return (self.delta_x * other.delta_x) + (self.delta_y * other.delta_y)
     def are_parallel(self, other):
         return other.dot(self.perpendicular()) == 0
+    def xy(self, other):
+        return self.delta_x*other.delta_y
 
 class TestDirectionVector(unittest.TestCase):
     def test_perpendicular(self):
@@ -1889,6 +1909,7 @@ class Line(object):
         self.p1 = p1
         self.p2 = p2
         self.dv = DirectionVector(p1, p2)
+        self.debug = False
     def __eq__(self, other):
         return (self.p1 == other.p1) and (self.p2 == other.p2)
     def __ne__(self, other):
@@ -1931,6 +1952,9 @@ class Line(object):
     def in_x_range(self, x):
         return min(self.p1.x, self.p2.x) < x < max(self.p1.x, self.p2.x)
     def intersect(self, other):
+        if type(self) is not type((other)):
+            # other must be a Cross
+            return other.intersect(self)
         # http://geomalgorithms.com/a05-_intersect-1.html
         if self.parallel(other):
             if self.coincide(other):
@@ -1940,9 +1964,12 @@ class Line(object):
         w = DirectionVector(other.p1, self.p1)
         v = other.dv
         u = self.dv
-        s_intersect = ((v.delta_y*w.delta_x)-(v.delta_x*w.delta_y))/((v.delta_x*u.delta_y)-(v.delta_y*u.delta_x))
-        #print('s_intersect = %f' % (s_intersect))
-        return 0.0 < s_intersect < 1.0
+        #s_intersect = ((v.delta_y*w.delta_x)-(v.delta_x*w.delta_y))/((v.delta_x*u.delta_y)-(v.delta_y*u.delta_x))
+        s_intersect = (w.xy(v)-v.xy(w))/(v.xy(u)-u.xy(v))
+        t_intersect = (u.xy(w)-w.xy(u))/(u.xy(v)-v.xy(u))
+        if self.debug:
+            print('s = %f, t = %f' % (s_intersect, t_intersect))
+        return (0.0 <= s_intersect <= 1.0) and (0.0 <= t_intersect <= 1.0)
 
 class TestLine(unittest.TestCase):
     def test_coincide(self):
@@ -1960,6 +1987,68 @@ class TestLine(unittest.TestCase):
         l2 = Line(Point(0,1), Point(4,3))
         l3 = Line(Point(8,4), Point(12,6))
         self.assertNotEqual(l2,l3)
+    def test_intersect1(self):
+        l1 = Line(Point(0,0), Point(4,2))
+        l2 = Line(Point(1,2), Point(3,1))
+        self.assertTrue(l1.intersect(l2))
+        self.assertTrue(l2.intersect(l1))
+    def test_intersect2(self):
+        l1 = Line(Point(0,0), Point(4,4))
+        l2 = Line(Point(3,3), Point(5,5))
+        self.assertTrue(l1.intersect(l2))
+        self.assertTrue(l2.intersect(l1))
+    def test_intersect3(self):
+        l1 = Line(Point(0,0), Point(2,2))
+        l2 = Line(Point(3,3), Point(5,5))
+        self.assertFalse(l1.intersect(l2))
+        self.assertFalse(l2.intersect(l1))
+    def test_intersect4(self):
+        l1 = Line(Point(0,0), Point(2,2))
+        l2 = Line(Point(0,9), Point(9,0))
+        self.assertFalse(l1.intersect(l2))
+        self.assertFalse(l2.intersect(l1))
+
+class Cross(object):
+    def __init__(self, coord):
+        self.x = coord.get_x()
+        self.y = coord.get_y()
+    def intersect(self, other):
+        if type(self) is not type((other)):
+            # the other myst be a line
+            my_lines = self.get_lines()
+            return other.intersect(my_lines[0]) or other.intersect(my_lines[1])
+        else:
+            m = self.get_lines()
+            o = other.get_lines()
+            return m[0].intersect(o[0]) or m[0].intersect(o[1]) or m[1].intersect(o[0]) or m[1].intersect(o[1])
+    def get_lines(self):
+        return (Line(Point(self.x,self.y-1),Point(self.x,self.y+1)), Line(Point(self.x-1,self.y),Point(self.x+1,self.y)))
+
+class TestCross(unittest.TestCase):
+    def test_cross_line(self):
+        cross = Cross(Coord(5,5))
+        line = Line(Point(1,1),Point(9,9))
+        self.assertTrue(cross.intersect(line))
+    def test_line_cross(self):
+        cross = Cross(Coord(5,5))
+        line = Line(Point(1,1),Point(9,9))
+        self.assertTrue(line.intersect(cross))
+    def test_cross_cross(self):
+        cross1 = Cross(Coord(5,5))
+        cross2 = Cross(Coord(5,6))
+        self.assertTrue(cross1.intersect(cross2))
+    def test_not_cross_line(self):
+        cross = Cross(Coord(5,5))
+        line = Line(Point(1,1),Point(1,9))
+        self.assertFalse(cross.intersect(line))
+    def test_not_line_cross(self):
+        cross = Cross(Coord(5,5))
+        line = Line(Point(1,1),Point(1,9))
+        self.assertFalse(line.intersect(cross))
+    def test_not_cross_cross(self):
+        cross1 = Cross(Coord(5,5))
+        cross2 = Cross(Coord(7,7))
+        self.assertFalse(cross1.intersect(cross2))
 
 class PathMaker(object):
     def __init__(self, span_x, span_y, inner_point_count):
@@ -2289,8 +2378,28 @@ class TestSplitTree3Maze(unittest.TestCase):
         m = SplitTree3Maze(10, 10, 'v3')
         path = m.shortest_non_crossing_path(m.get(Coord(2,2)), m.get(Coord(4,7)))
         self.assertEqual(8, len(path))
-        #TODO: need additional checks to make sure this simple path is good
-        #TODO: need additional checks to see about obstical avoidance
+        # there are multiple shortest paths, this is the one picked in free space
+        self.assertEqual(Coord(2,2), path[0].get_coord())
+        self.assertEqual(Coord(3,2), path[1].get_coord())
+        self.assertEqual(Coord(4,2), path[2].get_coord())
+        self.assertEqual(Coord(4,3), path[3].get_coord())
+        self.assertEqual(Coord(4,4), path[4].get_coord())
+        self.assertEqual(Coord(4,5), path[5].get_coord())
+        self.assertEqual(Coord(4,6), path[6].get_coord())
+        self.assertEqual(Coord(4,7), path[7].get_coord())
+    def test_shortest_non_crossing_path_with_obstruction(self):
+        m = SplitTree3Maze(10, 10, 'v3')
+        m.build_from_to(Coord(3,0),Coord(3,6),5)
+        path = m.shortest_non_crossing_path(m.get(Coord(2,2)), m.get(Coord(4,7)))
+        self.assertEqual(8, len(path))
+        self.assertEqual(Coord(2,2), path[0].get_coord())
+        self.assertEqual(Coord(2,3), path[1].get_coord())
+        self.assertEqual(Coord(2,4), path[2].get_coord())
+        self.assertEqual(Coord(2,5), path[3].get_coord())
+        self.assertEqual(Coord(2,6), path[4].get_coord())
+        self.assertEqual(Coord(2,7), path[5].get_coord())
+        self.assertEqual(Coord(3,7), path[6].get_coord())
+        self.assertEqual(Coord(4,7), path[7].get_coord())
     def test_get_unlinked_adjacents(self):
         m = SplitTree3Maze(10, 10, 'v3')
         corner = m.get_unlinked_adjacents(m.get_first_cell())
