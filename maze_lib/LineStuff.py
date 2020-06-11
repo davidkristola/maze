@@ -1,4 +1,5 @@
 import unittest
+import math
 from Coord import *
 
 class Point(object):
@@ -20,10 +21,20 @@ class Point(object):
     def coord(self):
         #TODO: use round
         return Coord(int(self.x),int(self.y))
+    def distance_to(self, other):
+        dx = other.x - self.x
+        dy = other.y - self.y
+        return math.sqrt(dx*dx+dy*dy)
 
 class TestPoint(unittest.TestCase):
     def test_coord(self):
         self.assertEqual(Coord(3,4), Point(3.001,4.001).coord())
+    def test_distance_to(self):
+        p1 = Point(1,2)
+        p2 = Point(1+3,2+4)
+        d = 5 # sqrt(3^2+4^2)
+        self.assertAlmostEqual(d, p1.distance_to(p2))
+        self.assertAlmostEqual(d, p2.distance_to(p1))
 
 class DirectionVector(object):
     def __init__(self, p0, p1):
@@ -86,6 +97,11 @@ class Line(object):
         return self.dv.are_parallel(dv)
     def in_x_range(self, x):
         return min(self.p1.x, self.p2.x) < x < max(self.p1.x, self.p2.x)
+    def intersect2(self, other):
+        if type(self) is not type((other)):
+            # other must be a Cross
+            return other.intersect2(self)
+        return self.intersect(other)
     def intersect(self, other):
         """
         Returs True if this line intersects other.
@@ -117,6 +133,8 @@ class Line(object):
         i_x = s_intersect*u.delta_x + self.p1.get_x()
         i_y = s_intersect*u.delta_y + self.p1.get_y()
         return Point(i_x, i_y)
+    def is_cross(self):
+        return False
 
 class TestLine(unittest.TestCase):
     def test_coincide(self):
@@ -144,6 +162,11 @@ class TestLine(unittest.TestCase):
         l2 = Line(Point(3,3), Point(5,5))
         self.assertTrue(l1.intersect(l2))
         self.assertTrue(l2.intersect(l1))
+    def test_intersect2_v2(self):
+        l1 = Line(Point(0,0), Point(4,4))
+        l2 = Line(Point(3,3), Point(5,5))
+        self.assertTrue(l1.intersect2(l2))
+        self.assertTrue(l2.intersect2(l1))
     def test_intersect3(self):
         l1 = Line(Point(0,0), Point(2,2))
         l2 = Line(Point(3,3), Point(5,5))
@@ -167,6 +190,8 @@ class Cross(object):
     def __init__(self, coord):
         self.x = coord.get_x()
         self.y = coord.get_y()
+    def intersect2(self, other):
+        return False
     def intersect(self, other):
         if type(self) is not type((other)):
             # the other myst be a line
@@ -178,6 +203,8 @@ class Cross(object):
             return m[0].intersect(o[0]) or m[0].intersect(o[1]) or m[1].intersect(o[0]) or m[1].intersect(o[1])
     def get_lines(self):
         return (Line(Point(self.x,self.y-1),Point(self.x,self.y+1)), Line(Point(self.x-1,self.y),Point(self.x+1,self.y)))
+    def is_cross(self):
+        return True
 
 class TestCross(unittest.TestCase):
     def test_cross_line(self):
@@ -204,6 +231,18 @@ class TestCross(unittest.TestCase):
         cross1 = Cross(Coord(5,5))
         cross2 = Cross(Coord(7,7))
         self.assertFalse(cross1.intersect(cross2))
+    def test_cross_line_intersect2(self):
+        cross = Cross(Coord(5,5))
+        line = Line(Point(1,1),Point(9,9))
+        self.assertFalse(cross.intersect2(line))
+    def test_line_cross_intersect2(self):
+        cross = Cross(Coord(5,5))
+        line = Line(Point(1,1),Point(9,9))
+        self.assertFalse(line.intersect2(cross))
+    def test_cross_cross_intersect2(self):
+        cross1 = Cross(Coord(5,5))
+        cross2 = Cross(Coord(5,6))
+        self.assertFalse(cross1.intersect2(cross2))
 
 class LineLikeCollection(object):
     def __init__(self, line_list):
@@ -214,7 +253,7 @@ class LineLikeCollection(object):
             for j in range(i,len(self.line_list)):
                 a = self.line_list[i]
                 b = self.line_list[j]
-                if a.intersect(b):
+                if a.intersect2(b):
                     # found an intersecting pair!
                     del self.line_list[j]
                     del self.line_list[i]
@@ -222,6 +261,36 @@ class LineLikeCollection(object):
         return (None,None)
     def count(self):
         return len(self.line_list)
+    def _uncross(self):
+        a,b = self.crossing()
+        if a is None:
+            return False
+        intersection_point = a.intersection_point(b)
+        intersection_coord = intersection_point.coord()
+        print('_uncross splitting %s and %s at %s' % (a, b, intersection_point))
+        cross = Cross(intersection_coord)
+        self.line_list += [cross]
+        from_points = [a.get_p1(), a.get_p2(), b.get_p1(), b.get_p2()]
+        lines = cross.get_lines()
+        to_points = [lines[0].get_p1(), lines[0].get_p2(), lines[1].get_p1(), lines[1].get_p2()]
+        for p in from_points:
+            best_i = 0
+            best_d = 100000000
+            for i in range(len(to_points)):
+                d = p.distance_to(to_points[i])
+                if d < best_d:
+                    best_d = d
+                    best_i = i
+            new_line = Line(p, to_points[best_i])
+            print('Adding new line %s' % new_line)
+            self.line_list += [new_line]
+            del to_points[best_i]
+        return True
+    def uncross(self):
+        while self._uncross():
+            pass
+    def nudge(self):
+        pass # move line-like objects around to make more room
 
 class TestLineLikeCollection(unittest.TestCase):
     def line(self, x1,y1,x2,y2):
@@ -246,3 +315,21 @@ class TestLineLikeCollection(unittest.TestCase):
         self.assertEqual(a, None)
         self.assertEqual(b, None)
         self.assertEqual(3, llc.count())
+    def test_uncross_very_tight(self):
+        l1 = self.line(1,1,1,5)
+        l2 = self.line(2,5,9,5)
+        l3 = self.line(2,2,8,8)
+        llc = LineLikeCollection([l1, l2, l3])
+        self.assertEqual(3, llc.count())
+        llc.uncross() # each two crossing lines turn into 5 objects (4 lines and a cross)
+        self.assertEqual(6, llc.count())
+    def test_uncross(self):
+        l1 = self.line(10,01,10,50)
+        l2 = self.line(20,50,90,50)
+        l3 = self.line(20,20,80,80)
+        llc = LineLikeCollection([l1, l2, l3])
+        self.assertEqual(3, llc.count())
+        llc.uncross() # each two crossing lines turn into 5 objects (4 lines and a cross)
+        self.assertEqual(6, llc.count())
+
+

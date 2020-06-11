@@ -885,8 +885,19 @@ class SplitTree3Maze(SplitTreeMaze):
     def complete_generation(self, progress = SilentProgressReporter()):
          self.split_tree_again(progress)
 
-    def build_path_from_line_list(self, line_list):
-        point_path = []
+    def build_path_from_line_list(self, line_list, color):
+        llc = LineLikeCollection(line_list)
+        llc.nudge()
+        llc.uncross()
+        llc.nudge()
+        for lineish in llc.line_list:
+            if lineish.is_cross():
+                pass
+            else:
+                cell_1 = self.get(lineish.get_p1().coord())
+                cell_2 = self.get(lineish.get_p2().coord())
+                path = self.shortest_non_crossing_path(cell_1, cell_2)
+                self.build_path(path, color)
         # magic happens here
         # while there is a crossing pair:
         #     find cross point
@@ -897,6 +908,7 @@ class SplitTree3Maze(SplitTreeMaze):
         # convert all line-like objects to paths using shortest_non_crossing_path
         # stitch paths together (build in maze)
         # extract point_path from start to finish (for use in split-tree algo)
+        point_path = []
         return point_path
     def shortest_non_crossing_path(self, start_cell, stop_cell):
         '''BFS'''
