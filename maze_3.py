@@ -1,6 +1,7 @@
 import Tkinter
 import sys
-import maze_lib
+#import maze_lib
+from maze_lib import maze_lib as maze_lib
 import random
 
 class InfoProgressReporter(object):
