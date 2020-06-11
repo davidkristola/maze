@@ -1865,6 +1865,7 @@ class Point(object):
     def __ne__(self, other):
         return not self.__eq__(other)
     def coord(self):
+        #TODO: use round
         return Coord(int(self.x),int(self.y))
 
 class TestPoint(unittest.TestCase):
@@ -1885,6 +1886,7 @@ class DirectionVector(object):
     def dot(self, other):
         return (self.delta_x * other.delta_x) + (self.delta_y * other.delta_y)
     def are_parallel(self, other):
+        #TODO: use math.close
         return other.dot(self.perpendicular()) == 0
     def xy(self, other):
         return self.delta_x*other.delta_y
@@ -1924,28 +1926,6 @@ class Line(object):
         return self.p1
     def get_p2(self):
         return self.p2
-    #def slope(self):
-    #    return self.m
-    #def intercept(self):
-    #    return self.b
-    #def _slope(self):
-    #    return float(self.p2.y - self.p1.y)/float(self.p2.x - self.p1.x)
-    #def _intercept(self):
-    #    return self.p2.y - (self.p2.x * self._slope())
-    #def project_x(self, x):
-    #    return (self.m * x) + self.b
-    #def project_y(self, y):
-    #    return (y - self.b) / self.m
-    #def in_x_segment(self, x):
-    #    if self.p1.x < self.p2.x:
-    #        return (self.p1.x <= x) and (x <= self.p2.x)
-    #    else:
-    #        return (self.p2.x <= x) and (x <= self.p1.x)
-    #def in_y_segment(self, y):
-    #    if self.p1.y < self.p2.y:
-    #        return (self.p1.y <= y) and (y <= self.p2.y)
-    #    else:
-    #        return (self.p2.y <= y) and (y <= self.p1.y)
     def parallel(self, other):
         return self.dv.are_parallel(other.dv)
     def coincide(self, other): # invalid if not parallel
@@ -1954,6 +1934,9 @@ class Line(object):
     def in_x_range(self, x):
         return min(self.p1.x, self.p2.x) < x < max(self.p1.x, self.p2.x)
     def intersect(self, other):
+        """
+        Returs True if this line intersects other.
+        """
         if type(self) is not type((other)):
             # other must be a Cross
             return other.intersect(self)
@@ -1972,6 +1955,15 @@ class Line(object):
         if self.debug:
             print('s = %f, t = %f' % (s_intersect, t_intersect))
         return (0.0 <= s_intersect <= 1.0) and (0.0 <= t_intersect <= 1.0)
+    def intersection_point(self, other):
+        # precondition: not parallel
+        w = DirectionVector(other.p1, self.p1)
+        v = other.dv
+        u = self.dv
+        s_intersect = (w.xy(v)-v.xy(w))/(v.xy(u)-u.xy(v))
+        i_x = s_intersect*u.delta_x + self.p1.get_x()
+        i_y = s_intersect*u.delta_y + self.p1.get_y()
+        return Point(i_x, i_y)
 
 class TestLine(unittest.TestCase):
     def test_coincide(self):
@@ -2009,6 +2001,14 @@ class TestLine(unittest.TestCase):
         l2 = Line(Point(0,9), Point(9,0))
         self.assertFalse(l1.intersect(l2))
         self.assertFalse(l2.intersect(l1))
+    def test_intersectin_point(self):
+        l1 = Line(Point(0,0), Point(2,2))
+        l2 = Line(Point(0,8), Point(8,0))
+        i = Point(4,4)
+        self.assertAlmostEqual(i.get_x(), l1.intersection_point(l2).get_x())
+        self.assertAlmostEqual(i.get_y(), l1.intersection_point(l2).get_y())
+        self.assertAlmostEqual(i.get_x(), l2.intersection_point(l1).get_x())
+        self.assertAlmostEqual(i.get_y(), l2.intersection_point(l1).get_y())
 
 class Cross(object):
     def __init__(self, coord):
@@ -2101,6 +2101,12 @@ class PathMaker(object):
         self.inner_point_count = inner_point_count
         self.elligable_points = self._all_inner_points()
         random.shuffle(self.elligable_points)
+    def _all_inner_points(self):
+        inner_points = []
+        for x in range(self.span_x-2):
+            for y in range(self.span_y-2):
+                inner_points.append(Point(x+1,y+1))
+        return inner_points
     def _first_point(self):
         return Point(0,0)
     def _last_point(self):
@@ -2152,12 +2158,6 @@ class PathMaker(object):
             if self.cross(line, candidate):
                 return True
         return False
-    def _all_inner_points(self):
-        inner_points = []
-        for x in range(self.span_x-2):
-            for y in range(self.span_y-2):
-                inner_points.append(Point(x+1,y+1))
-        return inner_points
     def get_line_list(self):
         return self._point_list_to_line_list(self._make_random_point_list())
 
