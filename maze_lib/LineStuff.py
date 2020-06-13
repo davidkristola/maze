@@ -25,6 +25,8 @@ class Point(object):
         dx = other.x - self.x
         dy = other.y - self.y
         return math.sqrt(dx*dx+dy*dy)
+    def touches(self, other):
+        return self.coord() == other.coord()
 
 class TestPoint(unittest.TestCase):
     def test_coord(self):
@@ -35,6 +37,14 @@ class TestPoint(unittest.TestCase):
         d = 5 # sqrt(3^2+4^2)
         self.assertAlmostEqual(d, p1.distance_to(p2))
         self.assertAlmostEqual(d, p2.distance_to(p1))
+    def test_touches(self):
+        p1 = Point(2.0002,3.0003)
+        p2 = Point(2,3)
+        p3 = Point(4,5)
+        self.assertTrue(p1.touches(p2))
+        self.assertTrue(p2.touches(p1))
+        self.assertFalse(p2.touches(p3))
+        self.assertFalse(p3.touches(p2))
 
 class DirectionVector(object):
     def __init__(self, p0, p1):
@@ -70,6 +80,9 @@ class TestDirectionVector(unittest.TestCase):
         dv2 = DirectionVector(Point(1,3), Point(2,5))
         self.assertFalse(dv1.are_parallel(dv2))
 
+def near_zero(x):
+    return abs(x) < 0.00001
+
 class Line(object):
     def __init__(self, p1, p2):
         self.p1 = p1
@@ -97,11 +110,25 @@ class Line(object):
         return self.dv.are_parallel(dv)
     def in_x_range(self, x):
         return min(self.p1.x, self.p2.x) < x < max(self.p1.x, self.p2.x)
+    def overlap(self, other):
+        return (self.in_x_range(other.p1.x)) or (self.in_x_range(other.p2.x)) or (other.in_x_range(self.p1.x)) or (other.in_x_range(self.p2.x))
+    def is_point(self):
+        return self.p1.coord() == self.p2.coord()
+    def touch(self, other):
+        if type(self) is not type((other)):
+            # other must be a Cross
+            return other.touch(self)
+        return self.get_p1().touches(other.get_p1()) or self.get_p1().touches(other.get_p2()) or self.get_p2().touches(other.get_p1()) or self.get_p2().touches(other.get_p2())
     def intersect2(self, other):
         if type(self) is not type((other)):
             # other must be a Cross
             return other.intersect2(self)
-        return self.intersect(other)
+        if self.intersect(other):
+            if self.touch(other):
+                return False
+            else:
+                return True
+        return False
     def intersect(self, other):
         """
         Returs True if this line intersects other.
@@ -109,18 +136,26 @@ class Line(object):
         if type(self) is not type((other)):
             # other must be a Cross
             return other.intersect(self)
+        if self.is_point():
+            return False
         # http://geomalgorithms.com/a05-_intersect-1.html
         if self.parallel(other):
             if self.coincide(other):
-                return (self.in_x_range(other.p1.x)) or (self.in_x_range(other.p2.x)) or (other.in_x_range(self.p1.x)) or (other.in_x_range(self.p2.x))
+                return self.overlap(other)
             else:
                 return False
         w = DirectionVector(other.p1, self.p1)
         v = other.dv
         u = self.dv
         #s_intersect = ((v.delta_y*w.delta_x)-(v.delta_x*w.delta_y))/((v.delta_x*u.delta_y)-(v.delta_y*u.delta_x))
-        s_intersect = (w.xy(v)-v.xy(w))/(v.xy(u)-u.xy(v))
-        t_intersect = (u.xy(w)-w.xy(u))/(u.xy(v)-v.xy(u))
+        s_denom = (v.xy(u)-u.xy(v))
+        if near_zero(s_denom):
+            return False
+        s_intersect = (w.xy(v)-v.xy(w))/s_denom
+        t_denom = (u.xy(v)-v.xy(u))
+        if near_zero(t_denom):
+            return False
+        t_intersect = (u.xy(w)-w.xy(u))/t_denom
         if self.debug:
             print('s = %f, t = %f' % (s_intersect, t_intersect))
         return (0.0 <= s_intersect <= 1.0) and (0.0 <= t_intersect <= 1.0)
@@ -129,7 +164,10 @@ class Line(object):
         w = DirectionVector(other.p1, self.p1)
         v = other.dv
         u = self.dv
-        s_intersect = (w.xy(v)-v.xy(w))/(v.xy(u)-u.xy(v))
+        s_denom = (v.xy(u)-u.xy(v))
+        if near_zero(s_denom):
+            print('Error, trying to calculate intersection point for %s and %s' % (self, other))
+        s_intersect = (w.xy(v)-v.xy(w))/s_denom
         i_x = s_intersect*u.delta_x + self.p1.get_x()
         i_y = s_intersect*u.delta_y + self.p1.get_y()
         return Point(i_x, i_y)
@@ -152,31 +190,59 @@ class TestLine(unittest.TestCase):
         l2 = Line(Point(0,1), Point(4,3))
         l3 = Line(Point(8,4), Point(12,6))
         self.assertNotEqual(l2,l3)
-    def test_intersect1(self):
+    def test_intersect_t1(self):
         l1 = Line(Point(0,0), Point(4,2))
         l2 = Line(Point(1,2), Point(3,1))
         self.assertTrue(l1.intersect(l2))
         self.assertTrue(l2.intersect(l1))
-    def test_intersect2(self):
+    def test_intersect_t2(self):
         l1 = Line(Point(0,0), Point(4,4))
         l2 = Line(Point(3,3), Point(5,5))
         self.assertTrue(l1.intersect(l2))
         self.assertTrue(l2.intersect(l1))
-    def test_intersect2_v2(self):
+    def test_intersect2_t1(self):
         l1 = Line(Point(0,0), Point(4,4))
         l2 = Line(Point(3,3), Point(5,5))
         self.assertTrue(l1.intersect2(l2))
         self.assertTrue(l2.intersect2(l1))
-    def test_intersect3(self):
+    def test_intersect_t3(self):
         l1 = Line(Point(0,0), Point(2,2))
         l2 = Line(Point(3,3), Point(5,5))
         self.assertFalse(l1.intersect(l2))
         self.assertFalse(l2.intersect(l1))
-    def test_intersect4(self):
+    def test_intersect2_t3(self):
+        l1 = Line(Point(0,0), Point(2,2))
+        l2 = Line(Point(3,3), Point(5,5))
+        self.assertFalse(l1.intersect2(l2))
+        self.assertFalse(l2.intersect2(l1))
+    def test_intersect_t4(self):
         l1 = Line(Point(0,0), Point(2,2))
         l2 = Line(Point(0,9), Point(9,0))
         self.assertFalse(l1.intersect(l2))
         self.assertFalse(l2.intersect(l1))
+    def test_intersect2_t4(self):
+        l1 = Line(Point(0,0), Point(2,2))
+        l2 = Line(Point(0,9), Point(9,0))
+        self.assertFalse(l1.intersect2(l2))
+        self.assertFalse(l2.intersect2(l1))
+    def test_intersect2_t5(self):
+        # touching points are not intersections
+        l1 = Line(Point(2,0), Point(2,2))
+        l2 = Line(Point(2,2), Point(9,2))
+        self.assertFalse(l1.intersect2(l2))
+        self.assertFalse(l2.intersect2(l1))
+    def test_touch_t1(self):
+        # touching points are not intersections
+        l1 = Line(Point(2,0), Point(2,2))
+        l2 = Line(Point(2,2), Point(9,2))
+        self.assertTrue(l1.touch(l2))
+        self.assertTrue(l2.touch(l1))
+    def test_touch_t2(self):
+        # touching points are not intersections
+        l1 = Line(Point(2,0), Point(2,2))
+        l2 = Line(Point(3,2), Point(9,2))
+        self.assertFalse(l1.touch(l2))
+        self.assertFalse(l2.touch(l1))
     def test_intersectin_point(self):
         l1 = Line(Point(0,0), Point(2,2))
         l2 = Line(Point(0,8), Point(8,0))
@@ -188,8 +254,15 @@ class TestLine(unittest.TestCase):
 
 class Cross(object):
     def __init__(self, coord):
+        self.coordinate = coord
         self.x = coord.get_x()
         self.y = coord.get_y()
+    def coord(self):
+        return self.coordinate
+    def __str__(self):
+        return 'Cross@%s' % (self.coordinate)
+    def __repr__(self):
+        return str(self)
     def intersect2(self, other):
         return False
     def intersect(self, other):
@@ -247,14 +320,19 @@ class TestCross(unittest.TestCase):
 class LineLikeCollection(object):
     def __init__(self, line_list):
         self.line_list = line_list
+        self.debug = False
     def crossing(self):
         '''return the two crossing line-like items, or None,None'''
         for i in range(len(self.line_list)):
-            for j in range(i,len(self.line_list)):
+            for j in range(i+1,len(self.line_list)):
                 a = self.line_list[i]
                 b = self.line_list[j]
+                if self.debug:
+                    print('crossing(%d,%d)? %s %s' % (i,j,a,b))
                 if a.intersect2(b):
                     # found an intersecting pair!
+                    if self.debug:
+                        print('crossing found! index %d and %d: %s %s' % (i,j,a,b))
                     del self.line_list[j]
                     del self.line_list[i]
                     return (a,b)
@@ -267,7 +345,8 @@ class LineLikeCollection(object):
             return False
         intersection_point = a.intersection_point(b)
         intersection_coord = intersection_point.coord()
-        print('_uncross splitting %s and %s at %s' % (a, b, intersection_point))
+        if self.debug:
+            print('_uncross splitting %s and %s at %s' % (a, b, intersection_point))
         cross = Cross(intersection_coord)
         self.line_list += [cross]
         from_points = [a.get_p1(), a.get_p2(), b.get_p1(), b.get_p2()]
@@ -282,7 +361,8 @@ class LineLikeCollection(object):
                     best_d = d
                     best_i = i
             new_line = Line(p, to_points[best_i])
-            print('Adding new line %s' % new_line)
+            if self.debug:
+                print('Adding new line %s' % new_line)
             self.line_list += [new_line]
             del to_points[best_i]
         return True
@@ -296,11 +376,22 @@ class TestLineLikeCollection(unittest.TestCase):
     def line(self, x1,y1,x2,y2):
         return Line(Point(x1,y1),Point(x2,y2))
     def test_crossing_yes(self):
-        l1 = self.line(1,1,1,5)
-        l2 = self.line(2,5,9,5)
-        l3 = self.line(2,2,8,8)
+        l1 = self.line(1,1,1,5) # Y
+        l2 = self.line(2,5,9,5) # X
+        l3 = self.line(2,2,8,8) # Z
+        #9
+        #8       Z
+        #7      Z
+        #6     Z
+        #5YXXXZXXXX
+        #4Y  Z
+        #3Y Z
+        #2YZ
+        #1Y
+        # 123456789
         llc = LineLikeCollection([l1, l2, l3])
         self.assertEqual(3, llc.count())
+        #llc.debug = True
         a, b = llc.crossing()
         self.assertEqual(a, l2)
         self.assertEqual(b, l3)
@@ -331,5 +422,15 @@ class TestLineLikeCollection(unittest.TestCase):
         self.assertEqual(3, llc.count())
         llc.uncross() # each two crossing lines turn into 5 objects (4 lines and a cross)
         self.assertEqual(6, llc.count())
+    def test_uncross_where_s_is_zero(self):
+        # _uncross splitting Line{(27.000000,32.000000)->(18.000000,48.000000)} and Line{(26.000000,33.000000)->(23.000000,91.000000)}
+        l1 = self.line(27,32,18,48)
+        l2 = self.line(26,33,23,91)
+        llc = LineLikeCollection([l1,l2])
+        #llc.debug = True
+        llc.uncross()
+        #self.assertEqual(5, llc.count())
+        self.assertEqual(17, llc.count())
+
 
 

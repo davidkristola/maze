@@ -12,8 +12,8 @@ def opposite_direction(direction):
 
 class Coord(object):
     def __init__(self, x, y):
-        self.x = x
-        self.y = y
+        self.x = int(x)
+        self.y = int(y)
     def __eq__(self, other):
         return (self.x == other.x) and (self.y == other.y)
     def __ne__(self, other):

@@ -3,13 +3,13 @@ import random
 from LineStuff import *
 
 class PathMaker(object):
-    def __init__(self, span_x, span_y, inner_point_count):
+    def __init__(self, span_x, span_y, inner_point_count, step_count=1):
         self.span_x = span_x
         self.span_y = span_y
         self.inner_point_count = inner_point_count
         self.elligable_points = self._all_inner_points()
         random.shuffle(self.elligable_points)
-    def _all_inner_points(self):
+    def _all_inner_points(self, step_count=1):
         inner_points = []
         for x in range(self.span_x-2):
             for y in range(self.span_y-2):

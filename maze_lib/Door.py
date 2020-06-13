@@ -14,7 +14,7 @@ class Door(object):
    def get_direction(self):
       return self.direction
    def __str__(self):
-      return '<%s-%s-%s>' % (self.start, ('N', 'E', 'S', 'W')[self.direction], self.end)
+      return 'Door<%s-%s-%s>' % (self.start, ('N', 'E', 'S', 'W')[self.direction], self.end)
    def __repr__(self):
       return str(self)
    def is_real_door(self):
@@ -38,7 +38,7 @@ class TestDoor(unittest.TestCase):
       a = CellModule.Cell(Coord(1, 3))
       b = CellModule.Cell(Coord(2, 3))
       door = Door(a, SOUTH, b)
-      self.assertEqual(str(door), '<Cell(1,3)-S-Cell(2,3)>')
+      self.assertEqual(str(door), 'Door<%s-S-%s>' % (a,b))
 
 class DoorToTheOutside(object):
    def __init__(self, start, direction):

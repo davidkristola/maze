@@ -29,3 +29,26 @@ class TestPathQueue(unittest.TestCase):
         uut.add([5, 6])
         uut.add([7, 8, 9, 10, 11, 12, 13, 14])
         self.assertEqual(uut.count(), 3)
+
+
+class DistanceQueue(object):
+    def __init__(self):
+        self.heap = []
+    def add(self, distance, item):
+        heapq.heappush(self.heap, (distance, item))
+    def pop(self):
+        (distance, item) = heapq.heappop(self.heap)
+        return item
+    def count(self):
+        return len(self.heap)
+
+class TestDistanceQueue(unittest.TestCase):
+    def test_1(self):
+        uut = DistanceQueue()
+        uut.add(1, 1)
+        uut.add(2, 2)
+        uut.add(2, 3)
+        self.assertEqual(3, uut.count())
+        self.assertEqual(1, uut.pop())
+        self.assertEqual(2, uut.pop())
+        self.assertEqual(3, uut.pop())

@@ -110,7 +110,7 @@ class MazeApp(object):
       for i in range(self.get_outer_count()):
          self.maze.move_door()
       #TODO: check if maze object has complete_generation method
-      if self.outer_style.get() in ["split_tree", "split_tree_v2", "kruskal_walk"]:
+      if self.outer_style.get() in ["split_tree", "split_tree_v2", "split_tree_v3", "kruskal_walk"]:
           self.button_more.config(state=Tkinter.NORMAL)
       else:
           self.maze.open_outer_walls()

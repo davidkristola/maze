@@ -29,7 +29,7 @@ class Cell(object):
     def is_color(self, color):
         return self.color == color
     def __str__(self):
-        return 'Cell%s%s' % (self.zone, self.coord)
+        return 'Cell_%d%s' % (self.id, self.coord)
     def __repr__(self):
         return str(self)
     def has_door(self, direction):
@@ -72,7 +72,7 @@ class TestCell(unittest.TestCase):
    def setUp(self):
       self.a = Cell(Coord(8, 13))
    def test_str(self):
-      self.assertEqual(str(self.a), 'Cell(8,13)')
+      self.assertEqual(str(self.a), 'Cell_%d(8,13)'%self.a.get_id())
    def test_color(self):
       self.assertEqual(self.a.get_color(), 0)
       self.a.set_color(8)
