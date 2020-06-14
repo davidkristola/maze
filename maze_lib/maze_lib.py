@@ -44,6 +44,9 @@ class Maze(object):
       self.first_coord = Coord(0, 0)
       self.last_coord = Coord(height-1, width-1)
 
+   def is_two_part(self):
+      return False
+
    def get_first_coord(self):
       return self.first_coord
    def get_last_coord(self):
@@ -553,6 +556,8 @@ class Maze(object):
    def can_kruskal_join(self, c1, c2):
        if c1.has_under_cell() or c2.has_under_cell():
            return False # don't violate the weave criteria
+       if not (c1.is_free_to_link() and c2.is_free_to_link()):
+           return False # one or both of these cells have been blocked from linking
        return self.set_for_cell[c1.get_id()] != self.set_for_cell[c2.get_id()]
 
    def kruskal_join(self, c1, d, c2):
@@ -576,18 +581,27 @@ class Maze(object):
        return self.set_for_cell[cell_id]
 
    def kruskal_weave_over_under_cross(self, coord):
+       # this stamps a cross template around coord
        if not self.can_kruskal_weave_over_under_cross(coord):
            return False
        if random.randint(0, 1) == 0:
            #self.add_door(coord, EAST)
-           self.kruskal_join(self.get(coord), EAST, self.get_cell_in_direction_from_coord(coord, EAST))
+           east_cell = self.get_cell_in_direction_from_coord(coord, EAST)
+           east_cell.lock_template()
+           self.kruskal_join(self.get(coord), EAST, east_cell)
            #self.add_door(coord, WEST)
-           self.kruskal_join(self.get(coord), WEST, self.get_cell_in_direction_from_coord(coord, WEST))
+           west_cell = self.get_cell_in_direction_from_coord(coord, WEST)
+           west_cell.lock_template()
+           self.kruskal_join(self.get(coord), WEST, west_cell)
        else:
            #self.add_door(coord, NORTH)
-           self.kruskal_join(self.get(coord), NORTH, self.get_cell_in_direction_from_coord(coord, NORTH))
+           north_cell = self.get_cell_in_direction_from_coord(coord, NORTH)
+           north_cell.lock_template()
+           self.kruskal_join(self.get(coord), NORTH, north_cell)
            #self.add_door(coord, SOUTH)
-           self.kruskal_join(self.get(coord), SOUTH, self.get_cell_in_direction_from_coord(coord, SOUTH))
+           south_cell = self.get_cell_in_direction_from_coord(coord, SOUTH)
+           south_cell.lock_template()
+           self.kruskal_join(self.get(coord), SOUTH, south_cell)
        self.tunnel_under_existing_path(coord)
        return True
 
@@ -602,7 +616,15 @@ class Maze(object):
            d = (NORTH, SOUTH)
        self.add_under_door(under_cell, d[0])
        self.add_under_door(under_cell, d[1])
-       self.kruskal_join_sets(self.get_cell_in_direction_from_coord(coord, d[0]).get_id(), self.get_cell_in_direction_from_coord(coord, d[1]).get_id())
+       under_cell.lock_link()
+       over_cell.lock_link()
+       under_cell.lock_template()
+       over_cell.lock_template()
+       d0_cell = self.get_cell_in_direction_from_coord(coord, d[0])
+       d0_cell.lock_template()
+       d1_cell = self.get_cell_in_direction_from_coord(coord, d[1])
+       d1_cell.lock_template()
+       self.kruskal_join_sets(d0_cell.get_id(), d1_cell.get_id())
 
    def can_kruskal_weave_over_under_cross(self, coord):
        ''' make sure all of the surrounding cells are valid and not weaved. '''
@@ -613,6 +635,8 @@ class Maze(object):
                    return False
                cell_here = self.get(try_here)
                if cell_here.has_under_cell():
+                   return False
+               if not cell_here.is_free_to_use_in_template():
                    return False
        return True
 
@@ -637,24 +661,31 @@ class Maze(object):
            step_direction = self.pick_random_bicolor_wall(current)
        return path_taken
 
-   # This is not Weaved Kruskal... is it dead code?
-   #def exp_2(self):
-   #    path_maker = PathMaker(self.height, self.width, 8)
-   #    #path_maker.make_random_point_list()
-   #    #path = path_maker.a_non_crossing_path()
-   #    path = path_maker.new_path(8)
-   #    self.color_all(1)
-   #    color = 5
-   #    if path is None:
-   #        self.build_from_to(Coord(self.height-1,self.width-1), Coord(0,0), color)
-   #    else:
-   #        for line in path:
-   #            p1 = Coord(int(line.get_p1().x), int(line.get_p1().y))
-   #            p2 = Coord(int(line.get_p2().x), int(line.get_p2().y))
-   #            try:
-   #                self.build_from_to(p1, p2, color)
-   #            except:
-   #                pass
+   def kruskal_walk2(self, start, color, limit):
+       path_taken = [start.get_coord()]
+       current = start
+       current.set_color(color)
+       current.lock_template()
+       step_direction = self.pick_random_bicolor_wall(current)
+       attempts = 0
+       while (step_direction != None) and (len(path_taken) < limit) and (attempts < 2*limit):
+           attempts += 1
+           next_coord = current.get_coord().step(step_direction)
+           assert current.get_color() != self.get(next_coord).get_color()
+           next_cell = self.get(next_coord)
+           if self.can_kruskal_join(current, next_cell):
+               self.kruskal_join(current, step_direction, next_cell)
+               current = next_cell
+               current.set_color(color)
+               current.lock_template()
+               current.set_distance(len(path_taken))
+               current.set_prev(path_taken[-1])
+               path_taken += [next_coord]
+           step_direction = self.pick_random_bicolor_wall(current)
+       for coord in path_taken[1:-2]:
+           cell = self.get(coord)
+           cell.lock_link()
+       return path_taken
 
    def split_tree(self, grid_x, grid_y, sub_x, sub_y, outer_style, inner_style, progress_reporter = None):
        path_maker = PathMaker2(grid_x, grid_y, sub_x, sub_y)
@@ -861,6 +892,8 @@ class SplitTreeMaze(Maze):
          self.split_tree(5, 5, self.height//5, self.width//5, R_WALK, R_WALK, progress)
     def complete_generation(self, progress = SilentProgressReporter()):
          self.split_tree_again(progress)
+    def is_two_part(self):
+        return True
 
 class SplitTree2Maze(SplitTreeMaze):
     style_name = 'split_tree_v2'
@@ -871,6 +904,8 @@ class SplitTree2Maze(SplitTreeMaze):
         self.split_tree(self.height//5, self.width//5, 5, 5, R_WALK, R_WALK, progress)
     def complete_generation(self, progress = SilentProgressReporter()):
          self.split_tree_again(progress)
+    def is_two_part(self):
+        return True
 
 class SplitTree3Maze(SplitTreeMaze):
     style_name = 'split_tree_v3'
@@ -888,6 +923,8 @@ class SplitTree3Maze(SplitTreeMaze):
         self.color_from(8, self.get_first_coord())
     def complete_generation(self, progress = SilentProgressReporter()):
          self.split_tree_again(progress)
+    def is_two_part(self):
+        return True
 
     def build_path_from_line_list(self, line_list, color):
         llc = LineLikeCollection(line_list)
@@ -898,16 +935,16 @@ class SplitTree3Maze(SplitTreeMaze):
         llc.nudge()
         point_path = []
         for lineish in llc.line_list:
-            print('Working on %s' % lineish)
+            #print('Working on %s' % lineish)
             if lineish.is_cross():
                 self.add_cross(lineish.coord(), color)
             else:
                 cell_1 = self.get(lineish.get_p1().coord())
                 cell_2 = self.get(lineish.get_p2().coord())
                 path = self.shortest_non_crossing_path(cell_1, cell_2)
-                print('path size = %d' % len(path))
+                #print('path size = %d' % len(path))
                 coord_path = [p.get_coord() for p in path if p is not None]
-                print('path = %s' % coord_path)
+                #print('path = %s' % coord_path)
                 point_path.append(coord_path)
                 self.build_path(coord_path, color)
         #TODOL magic happens here
@@ -1005,6 +1042,73 @@ class KruskalWalkMaze(Maze):
         self.kruskal_with_walks(progress)
     def complete_generation(self, progress = SilentProgressReporter()):
          self.complete_kruskal_walk(progress)
+    def is_two_part(self):
+        return True
+
+
+class KruskalWalk2Maze(Maze):
+    style_name = 'kruskal_walk2'
+    def __init__(self, height, width, zone):
+        Maze.__init__(self, height, width, zone)
+    def start_generation(self, progress = SilentProgressReporter()):
+       self.set_up_unlinked_kruskal()
+       self.color_all(1)
+       for i in range(90):
+           self.kruskal_walk2(self.get(self.pick_random_coord()), 2, 20)
+    def complete_generation(self, progress = SilentProgressReporter()):
+         self.complete_kruskal_walk(progress)
+    def is_two_part(self):
+        return True
+
+class KruskalRandomTemplateMaze(Maze):
+    style_name = 'random_template'
+    def __init__(self, height, width, zone):
+        Maze.__init__(self, height, width, zone)
+    def start_generation(self, progress = SilentProgressReporter()):
+       self.set_up_unlinked_kruskal()
+       self.color_all(1)
+       for i in range(90):
+           template = random.randint(0,2)
+           if template == 0:
+               self.kruskal_weave_over_under_cross(self.pick_random_coord())
+           elif template == 1:
+               #TODO: make sure the template isn't locked
+               self.kruskal_walk2(self.get(self.pick_random_coord()), 2, 20)
+           else:
+               self.kruskal_run(self.get(self.pick_random_coord()), 2, 10)
+    def complete_generation(self, progress = SilentProgressReporter()):
+         self.complete_kruskal_walk(progress)
+    def is_two_part(self):
+        return True
+
+    def kruskal_run(self, start, color, limit):
+       path_taken = [start.get_coord()]
+       current = start
+       current.set_color(color)
+       current.lock_template()
+       step_direction = self.pick_random_bicolor_wall(current)
+       attempts = 0
+       while (step_direction != None) and (len(path_taken) < limit) and (attempts < 2*limit):
+           attempts += 1
+           next_coord = current.get_coord().step(step_direction)
+           if self.invalid_coordinate(next_coord) or (current.get_color() == self.get(next_coord).get_color()):
+               step_direction = None
+           else:
+               next_cell = self.get(next_coord)
+               if self.can_kruskal_join(current, next_cell):
+                   self.kruskal_join(current, step_direction, next_cell)
+                   current = next_cell
+                   current.set_color(color)
+                   current.lock_template()
+                   current.set_distance(len(path_taken))
+                   current.set_prev(path_taken[-1])
+                   path_taken += [next_coord]
+               else:
+                   step_direction = None
+       for coord in path_taken[1:-2]:
+           cell = self.get(coord)
+           cell.lock_link()
+       return path_taken
 
 def children_of_maze():
     subclasses = []

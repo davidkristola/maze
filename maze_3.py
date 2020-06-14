@@ -110,7 +110,8 @@ class MazeApp(object):
       for i in range(self.get_outer_count()):
          self.maze.move_door()
       #TODO: check if maze object has complete_generation method
-      if self.outer_style.get() in ["split_tree", "split_tree_v2", "split_tree_v3", "kruskal_walk"]:
+      #if self.outer_style.get() in ["split_tree", "split_tree_v2", "split_tree_v3", "kruskal_walk", "kruskal_walk2"]:
+      if self.maze.is_two_part():
           self.button_more.config(state=Tkinter.NORMAL)
       else:
           self.maze.open_outer_walls()
@@ -355,7 +356,7 @@ class CellPainterWire(CellPainter):
             self.area.create_oval(center[0]-s1, center[1]-s1, center[0]+s1, center[1]+s1, fill='black')
     def draw_over_under(self):
         self.compute_mids()
-        s1 = int(self.cell_size//3)
+        s1 = int(self.cell_size//5)
         s3 = self.cell_size - s1
         c1 = (self.x + s1, self.y + s1)
         c2 = (self.x + s3, self.y + s3)

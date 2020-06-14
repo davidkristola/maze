@@ -18,8 +18,9 @@ class Cell(object):
         self.prev = coord
         self.distance = 0
         self.id = get_next_id()
-        #self.id = (coord.x * 10000000) + coord.y
         self.under_cell = None
+        self.free_template = True
+        self.free_link = True
     def get_id(self):
         return self.id
     def set_color(self, color):
@@ -67,6 +68,14 @@ class Cell(object):
         return self.under_cell
     def has_under_cell(self):
         return self.under_cell is not None
+    def is_free_to_use_in_template(self):
+        return self.free_template
+    def is_free_to_link(self):
+        return self.free_link
+    def lock_template(self):
+        self.free_template = False
+    def lock_link(self):
+        self.free_link = False
 
 class TestCell(unittest.TestCase):
    def setUp(self):
@@ -111,6 +120,15 @@ class TestCell(unittest.TestCase):
       last = grid[2][2]
       self.assertNotEqual(first.get_id(), last.get_id())
       self.assertEqual(first.get_id(), grid[0][0].get_id())
+   def test_locks(self):
+         self.assertTrue(self.a.is_free_to_use_in_template())
+         self.assertTrue(self.a.is_free_to_link())
+         self.a.lock_template()
+         self.assertFalse(self.a.is_free_to_use_in_template())
+         self.assertTrue(self.a.is_free_to_link())
+         self.a.lock_link()
+         self.assertFalse(self.a.is_free_to_use_in_template())
+         self.assertFalse(self.a.is_free_to_link())
 
 class UnderCell(Cell):
    def __init__(self, over_cell):

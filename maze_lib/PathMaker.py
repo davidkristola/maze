@@ -11,8 +11,8 @@ class PathMaker(object):
         random.shuffle(self.elligable_points)
     def _all_inner_points(self, step_count=1):
         inner_points = []
-        for x in range(self.span_x-2):
-            for y in range(self.span_y-2):
+        for x in range(0, self.span_x-2, step_count):
+            for y in range(0, self.span_y-2, step_count):
                 inner_points.append(Point(x+1,y+1))
         return inner_points
     def _first_point(self):
