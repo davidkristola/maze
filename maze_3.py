@@ -231,8 +231,15 @@ class CellPainter(object):
                 self.area.create_line(x1, y1, x2, y2) # wall
             (x1, y1) = (x2, y2)
     def draw_over_under(self):
-        self.line(self.corners[0], self.corners[2])
-        self.line(self.corners[1], self.corners[3])
+        #self.line(self.corners[0], self.corners[2])
+        #self.line(self.corners[1], self.corners[3])
+        s = int((4*self.cell_size)//10) # 4/10ths
+        arcA0 = (self.corners[0][0]-s, self.corners[0][1])
+        arcA1 = (self.corners[1][0]+s, self.corners[1][1])
+        arcB0 = (self.corners[3][0]-s, self.corners[3][1])
+        arcB1 = (self.corners[2][0]+s, self.corners[2][1])
+        self.area.create_arc(arcA0[0], arcA0[1], arcA1[0], arcA1[1], start = 270.0, extent=180.0, style=Tkinter.ARC)
+        self.area.create_arc(arcB0[0], arcB0[1], arcB1[0], arcB1[1], start = 090.0, extent=180.0, style=Tkinter.ARC)
     def draw_empty(self):
         #self.area.create_rectangle(self.corners[0][0]+2, self.corners[0][1]+2, self.corners[2][0]-2, self.corners[2][1]-2, fill='gray75', width=1)
         return

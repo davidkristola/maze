@@ -467,6 +467,22 @@ class Maze(object):
          return None
       return random.choice(candidates)
 
+   def pick_random_bicolor_unlocked_wall(self, cell):
+      candidates = []
+      color = cell.get_color()
+      loc = cell.get_coord()
+      for direction in range(4):
+         neighbor = loc.step(direction)
+         if (not self.invalid_coordinate(neighbor)):
+            if (not cell.has_door(direction)):
+               n = self.get(neighbor)
+               if (not n.is_color(color)):
+                   if n.is_free_to_link() and n.is_free_to_use_in_template():
+                       candidates += [direction]
+      if len(candidates) == 0:
+         return None
+      return random.choice(candidates)
+
    def invalid_coordinate(self, coord):
       if coord.x < 0 or coord.x >= self.height:
          return True
@@ -582,7 +598,9 @@ class Maze(object):
 
    def kruskal_weave_over_under_cross(self, coord):
        # this stamps a cross template around coord
-       if not self.can_kruskal_weave_over_under_cross(coord):
+       #if not self.can_kruskal_weave_over_under_cross(coord):
+       #    return False
+       if not self.template_check_box(coord):
            return False
        if random.randint(0, 1) == 0:
            #self.add_door(coord, EAST)
@@ -603,6 +621,7 @@ class Maze(object):
            south_cell.lock_template()
            self.kruskal_join(self.get(coord), SOUTH, south_cell)
        self.tunnel_under_existing_path(coord)
+       self.template_lock_box(coord)
        return True
 
    def tunnel_under_existing_path(self, coord):
@@ -626,19 +645,36 @@ class Maze(object):
        d1_cell.lock_template()
        self.kruskal_join_sets(d0_cell.get_id(), d1_cell.get_id())
 
-   def can_kruskal_weave_over_under_cross(self, coord):
-       ''' make sure all of the surrounding cells are valid and not weaved. '''
-       for x_offset in [-1, 0, +1]:
-           for y_offset in [-1, 0, +1]:
-               try_here = coord.shift(x_offset, y_offset)
-               if self.invalid_coordinate(try_here):
+   #def can_kruskal_weave_over_under_cross(self, coord):
+   #    ''' make sure all of the surrounding cells are valid and not weaved. '''
+   #    for x_offset in [-1, 0, +1]:
+   #        for y_offset in [-1, 0, +1]:
+   #            try_here = coord.shift(x_offset, y_offset)
+   #            if self.invalid_coordinate(try_here):
+   #                return False
+   #            cell_here = self.get(try_here)
+   #            if cell_here.has_under_cell():
+   #                return False
+   #            if not cell_here.is_free_to_use_in_template():
+   #                return False
+   #    return True
+
+   def template_check_box(self, coord, delta=1):
+       for x_offset in range(-delta,delta+1):
+           for y_offset in range(-delta,delta+1):
+               here = coord.shift(x_offset, y_offset)
+               if self.invalid_coordinate(here):
                    return False
-               cell_here = self.get(try_here)
-               if cell_here.has_under_cell():
-                   return False
-               if not cell_here.is_free_to_use_in_template():
+               cell = self.get(here)
+               if not cell.is_free_to_use_in_template():
                    return False
        return True
+   def template_lock_box(self, coord, delta=1):
+       for x_offset in range(-delta,delta+1):
+           for y_offset in range(-delta,delta+1):
+               here = coord.shift(x_offset, y_offset)
+               cell = self.get(here)
+               cell.lock_template()
 
    def kruskal_walk(self, start, color, limit):
        path_taken = [start.get_coord()]
@@ -666,7 +702,7 @@ class Maze(object):
        current = start
        current.set_color(color)
        current.lock_template()
-       step_direction = self.pick_random_bicolor_wall(current)
+       step_direction = self.pick_random_bicolor_unlocked_wall(current)
        attempts = 0
        while (step_direction != None) and (len(path_taken) < limit) and (attempts < 2*limit):
            attempts += 1
@@ -681,7 +717,7 @@ class Maze(object):
                current.set_distance(len(path_taken))
                current.set_prev(path_taken[-1])
                path_taken += [next_coord]
-           step_direction = self.pick_random_bicolor_wall(current)
+           step_direction = self.pick_random_bicolor_unlocked_wall(current)
        for coord in path_taken[1:-2]:
            cell = self.get(coord)
            cell.lock_link()
@@ -1068,30 +1104,39 @@ class KruskalRandomTemplateMaze(Maze):
        self.set_up_unlinked_kruskal()
        self.color_all(1)
        for i in range(90):
-           template = random.randint(0,2)
+           starting_coord = self.pick_random_unlocked_coord()
+           template = random.randint(0,3)
            if template == 0:
-               self.kruskal_weave_over_under_cross(self.pick_random_coord())
+               self.kruskal_weave_over_under_cross(starting_coord)
            elif template == 1:
                #TODO: make sure the template isn't locked
-               self.kruskal_walk2(self.get(self.pick_random_coord()), 2, 20)
+               self.kruskal_walk2(self.get(starting_coord), 2, 20)
+           elif template == 2:
+               self.kruskal_run(self.get(starting_coord), 2, 10)
            else:
-               self.kruskal_run(self.get(self.pick_random_coord()), 2, 10)
+               self.kruskal_corner(starting_coord, 2)
     def complete_generation(self, progress = SilentProgressReporter()):
          self.complete_kruskal_walk(progress)
     def is_two_part(self):
         return True
+
+    def pick_random_unlocked_coord(self):
+        coord = self.pick_random_coord()
+        while not self.get(coord).is_free_to_use_in_template():
+            coord = self.pick_random_coord()
+        return coord
 
     def kruskal_run(self, start, color, limit):
        path_taken = [start.get_coord()]
        current = start
        current.set_color(color)
        current.lock_template()
-       step_direction = self.pick_random_bicolor_wall(current)
+       step_direction = self.pick_random_bicolor_unlocked_wall(current)
        attempts = 0
        while (step_direction != None) and (len(path_taken) < limit) and (attempts < 2*limit):
            attempts += 1
            next_coord = current.get_coord().step(step_direction)
-           if self.invalid_coordinate(next_coord) or (current.get_color() == self.get(next_coord).get_color()):
+           if self.invalid_coordinate(next_coord) or (current.get_color() == self.get(next_coord).get_color()) or not self.get(next_coord).is_free_to_use_in_template():
                step_direction = None
            else:
                next_cell = self.get(next_coord)
@@ -1109,6 +1154,33 @@ class KruskalRandomTemplateMaze(Maze):
            cell = self.get(coord)
            cell.lock_link()
        return path_taken
+
+    def kruskal_corner(self, coord, color):
+        if self.template_check_box(coord):
+            #TODO: rename template_check_box
+            current = self.get(coord)
+            current.set_color(color)
+            current.lock_template()
+            self.kruskal_add_door_from(coord, EAST, color, False)
+            self.kruskal_add_door_from(coord, SOUTH, color, False)
+            next_coord = coord.step(NORTH).step(WEST)
+            c2 = next_coord.step(EAST)
+            self.kruskal_add_door_from(c2, EAST, color, False)
+            c3 = next_coord.step(SOUTH)
+            self.kruskal_add_door_from(c3, SOUTH, color, False)
+            self.kruskal_add_door_from(next_coord, EAST, color, True)
+            self.kruskal_add_door_from(next_coord, SOUTH, color, True)
+    def kruskal_add_door_from(self, coord, step_direction, color, lock):
+            current = self.get(coord)
+            next_coord = coord.step(step_direction)
+            next_cell = self.get(next_coord)
+            if self.can_kruskal_join(current, next_cell):
+                self.kruskal_join(current, step_direction, next_cell)
+                next_cell.set_color(color)
+                next_cell.lock_template()
+                if lock:
+                    next_cell.lock_link()
+
 
 def children_of_maze():
     subclasses = []
