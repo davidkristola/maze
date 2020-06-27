@@ -921,9 +921,6 @@ class WeavedKruskalMaze(Maze):
 
 class SplitTreeMaze(Maze):
     style_name = 'split_tree'
-    def __init__(self, height, width, zone):
-        Maze.__init__(self, height, width, zone)
-        self.style = SPLIT_TREE
     def start_generation(self, progress = SilentProgressReporter()):
          self.split_tree(5, 5, self.height//5, self.width//5, R_WALK, R_WALK, progress)
     def complete_generation(self, progress = SilentProgressReporter()):
@@ -933,9 +930,6 @@ class SplitTreeMaze(Maze):
 
 class SplitTree2Maze(SplitTreeMaze):
     style_name = 'split_tree_v2'
-    def __init__(self, height, width, zone):
-        Maze.__init__(self, height, width, zone)
-        self.style = SPLIT_TREE_V2
     def start_generation(self, progress = SilentProgressReporter()):
         self.split_tree(self.height//5, self.width//5, 5, 5, R_WALK, R_WALK, progress)
     def complete_generation(self, progress = SilentProgressReporter()):
